@@ -50,16 +50,16 @@ public interface ChannelHistoryServletInterface extends BaseServletInterface {
 
     @GET
     @Path("/history")
-    @Operation(summary = "Returns a List of all revisions of the given filename")
-    @MirthOperation(name = "getHistory", display = "Get all revisions of a file", permission = Permissions.CHANNELS_VIEW, type = ExecuteType.ASYNC, auditable = false)
-    List<RevisionInfo> getHistory(@Param("fileName") @Parameter(description = "The name of the file", required = true) @QueryParam("fileName") String fileName) throws ClientException;
+    @Operation(summary = "Returns a List of all revisions of the given channel")
+    @MirthOperation(name = "getHistory", display = "Get all revisions of a channel", permission = Permissions.CHANNELS_VIEW, type = ExecuteType.ASYNC, auditable = false)
+    List<RevisionInfo> getHistory(@Param("channelId") @Parameter(description = "The ID of the channel", required = true) @QueryParam("channelId") String channelId) throws ClientException;
 
     @GET
     @Path("/content")
-    @Operation(summary = "Returns the content of the given file at the specified revision")
-    @MirthOperation(name = "getContent", display = "Get the content of the file at a specific revision", permission = Permissions.CHANNELS_VIEW, type = ExecuteType.SYNC, auditable = false)
-    String getContent(@Param("fileName") @Parameter(description = "The name of the file", required = true) @QueryParam("fileName") String fileName,
-            @Param("revision") @Parameter(description = "The value of revision", required = true) @QueryParam("revision") String revision) throws ClientException;
+    @Operation(summary = "Returns the content of the given channel at the specified revision")
+    @MirthOperation(name = "getContent", display = "Get the content of the channel at a specific revision", permission = Permissions.CHANNELS_VIEW, type = ExecuteType.SYNC, auditable = false)
+    String getContent(@Param("channelId") @Parameter(description = "The ID of the channel", required = true) @QueryParam("channelId") String channelId,
+            @Param("revision") @Parameter(description = "The revision ID", required = true) @QueryParam("revision") String revision) throws ClientException;
 
     @POST
     @Path("/revertChannel")

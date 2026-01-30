@@ -39,23 +39,23 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
     }
 
     @Override
-    public List<RevisionInfo> getHistory(String fileName) throws ClientException {
+    public List<RevisionInfo> getHistory(String channelId) throws ClientException {
         try {
-            return repo.getChannelHistory(fileName);
+            return repo.getChannelHistory(channelId);
         }
         catch(Exception e) {
-            log.warn("failed to get the history of file {}", fileName, e);
+            log.warn("failed to get the history of channel {}", channelId, e);
             throw new ClientException(e);
         }
     }
 
     @Override
-    public String getContent(String fileName, String revision) throws ClientException {
+    public String getContent(String channelId, String revision) throws ClientException {
         try {
-            return repo.getChannelContent(fileName, revision);
+            return repo.getChannelContent(channelId, revision);
         }
         catch(Exception e) {
-            log.warn("failed to get the content of file {} at revision {}", fileName, revision, e);
+            log.warn("failed to get the content of channel {} at revision {}", channelId, revision, e);
             throw new ClientException(e);
         }
     }
