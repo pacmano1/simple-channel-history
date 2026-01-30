@@ -1,0 +1,58 @@
+package com.diridium;
+
+import com.mirth.connect.model.ServerEventContext;
+import com.mirth.connect.model.codetemplates.CodeTemplate;
+import com.mirth.connect.model.codetemplates.CodeTemplateLibrary;
+import com.mirth.connect.model.converters.ObjectXMLSerializer;
+import com.mirth.connect.plugins.CodeTemplateServerPlugin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * @author Kiran Ayyagari (kayyagari@apache.org)
+ */
+public class CodeTemplateVersionController implements CodeTemplateServerPlugin {
+
+    private static Logger log = LoggerFactory.getLogger(CodeTemplateVersionController.class);
+
+    private DatabaseHistoryRepository repo;
+
+    private VersionControllerUtil vcUtil;
+
+    @Override
+    public String getPluginPointName() {
+        return ChannelHistoryServletInterface.PLUGIN_NAME;
+    }
+
+    @Override
+    public void start() {
+        log.info("starting simple-channel-history CodeTemplate version controller");
+        vcUtil = new VersionControllerUtil();
+        ObjectXMLSerializer serializer = ObjectXMLSerializer.getInstance();
+        DatabaseHistoryRepository.init(serializer);
+        repo = DatabaseHistoryRepository.getInstance();
+    }
+
+    @Override
+    public void stop() {
+        // do not close the repo here, it gets called from ChannelVersionController
+    }
+
+    @Override
+    public void remove(CodeTemplate ct, ServerEventContext sec) {
+        repo.deleteCodeTemplateHistory(ct.getId());
+    }
+
+    @Override
+    public void remove(CodeTemplateLibrary ctLib, ServerEventContext sec) {
+    }
+
+    @Override
+    public void save(CodeTemplate ct, ServerEventContext sec) {
+        repo.saveCodeTemplateHistory(ct, vcUtil.getUserId(sec));
+    }
+
+    @Override
+    public void save(CodeTemplateLibrary ctLib, ServerEventContext sec) {
+    }
+}
