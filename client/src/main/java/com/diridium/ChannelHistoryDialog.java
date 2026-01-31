@@ -235,8 +235,7 @@ public class ChannelHistoryDialog extends JDialog {
             if (reverted) {
                 PlatformUI.MIRTH_FRAME.alertInformation(this, "Channel reverted successfully.");
                 // Refresh the channel panel
-                PlatformUI.MIRTH_FRAME.channelPanel.clearChannelCache();
-                PlatformUI.MIRTH_FRAME.channelPanel.retrieveChannels(true);
+                PlatformUI.MIRTH_FRAME.channelPanel.doRefreshChannels();
                 loadHistory();
             }
         } catch (Exception e) {

@@ -36,6 +36,8 @@ import com.mirth.connect.client.core.api.Param;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
@@ -43,19 +45,23 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  */
 @Path("/extensions/simple-channel-history")
 @Tag(name = "Simple Channel History Extension")
-@Consumes(MediaType.APPLICATION_XML)
-@Produces(MediaType.APPLICATION_XML)
+@Consumes({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+@Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
 public interface ChannelHistoryServletInterface extends BaseServletInterface {
     String PLUGIN_NAME = "Simple Channel History";
 
     @GET
     @Path("/history")
     @Operation(summary = "Returns a List of all revisions of the given channel")
+    @ApiResponse(content = {
+            @Content(mediaType = MediaType.APPLICATION_XML),
+            @Content(mediaType = MediaType.APPLICATION_JSON) })
     @MirthOperation(name = "getHistory", display = "Get all revisions of a channel", permission = Permissions.CHANNELS_VIEW, type = ExecuteType.ASYNC, auditable = false)
     List<RevisionInfo> getHistory(@Param("channelId") @Parameter(description = "The ID of the channel", required = true) @QueryParam("channelId") String channelId) throws ClientException;
 
     @GET
     @Path("/content")
+    @Produces(MediaType.APPLICATION_XML)
     @Operation(summary = "Returns the content of the given channel at the specified revision")
     @MirthOperation(name = "getContent", display = "Get the content of the channel at a specific revision", permission = Permissions.CHANNELS_VIEW, type = ExecuteType.SYNC, auditable = false)
     String getContent(@Param("channelId") @Parameter(description = "The ID of the channel", required = true) @QueryParam("channelId") String channelId,
@@ -64,6 +70,9 @@ public interface ChannelHistoryServletInterface extends BaseServletInterface {
     @POST
     @Path("/revertChannel")
     @Operation(summary = "Revert the given Channel to the specified revision")
+    @ApiResponse(content = {
+            @Content(mediaType = MediaType.APPLICATION_XML),
+            @Content(mediaType = MediaType.APPLICATION_JSON) })
     @MirthOperation(name = "revertChannel", display = "Revert the given Channel to the specified revision", permission = Permissions.CHANNELS_MANAGE, type = ExecuteType.SYNC)
     boolean revertChannel(@Param("channelId") @Parameter(description = "The ID of the Channel", required = true) @QueryParam("channelId") String channelId,
             @Param("revision") @Parameter(description = "The value of revision", required = true) @QueryParam("revision") String revision) throws ClientException;
@@ -71,11 +80,15 @@ public interface ChannelHistoryServletInterface extends BaseServletInterface {
     @GET
     @Path("/codeTemplateHistory")
     @Operation(summary = "Returns a List of all revisions of the given code template")
+    @ApiResponse(content = {
+            @Content(mediaType = MediaType.APPLICATION_XML),
+            @Content(mediaType = MediaType.APPLICATION_JSON) })
     @MirthOperation(name = "getCodeTemplateHistory", display = "Get all revisions of a code template", permission = Permissions.CODE_TEMPLATES_VIEW, type = ExecuteType.ASYNC, auditable = false)
     List<RevisionInfo> getCodeTemplateHistory(@Param("codeTemplateId") @Parameter(description = "The ID of the code template", required = true) @QueryParam("codeTemplateId") String codeTemplateId) throws ClientException;
 
     @GET
     @Path("/codeTemplateContent")
+    @Produces(MediaType.APPLICATION_XML)
     @Operation(summary = "Returns the content of the given code template at the specified revision")
     @MirthOperation(name = "getCodeTemplateContent", display = "Get the content of the code template at a specific revision", permission = Permissions.CODE_TEMPLATES_VIEW, type = ExecuteType.SYNC, auditable = false)
     String getCodeTemplateContent(@Param("codeTemplateId") @Parameter(description = "The ID of the code template", required = true) @QueryParam("codeTemplateId") String codeTemplateId,
@@ -84,6 +97,9 @@ public interface ChannelHistoryServletInterface extends BaseServletInterface {
     @POST
     @Path("/revertCodeTemplate")
     @Operation(summary = "Revert the given CodeTemplate to the specified revision")
+    @ApiResponse(content = {
+            @Content(mediaType = MediaType.APPLICATION_XML),
+            @Content(mediaType = MediaType.APPLICATION_JSON) })
     @MirthOperation(name = "revertCodeTemplate", display = "Revert the given CodeTemplate to the specified revision", permission = Permissions.CODE_TEMPLATES_MANAGE, type = ExecuteType.SYNC)
     boolean revertCodeTemplate(@Param("codeTemplateId") @Parameter(description = "The ID of the CodeTemplate", required = true) @QueryParam("codeTemplateId") String codeTemplateId,
             @Param("revision") @Parameter(description = "The value of revision", required = true) @QueryParam("revision") String revision) throws ClientException;
@@ -91,6 +107,9 @@ public interface ChannelHistoryServletInterface extends BaseServletInterface {
     @POST
     @Path("/pruneChannelHistory")
     @Operation(summary = "Delete channel revisions older than the specified revision")
+    @ApiResponse(content = {
+            @Content(mediaType = MediaType.APPLICATION_XML),
+            @Content(mediaType = MediaType.APPLICATION_JSON) })
     @MirthOperation(name = "pruneChannelHistory", display = "Prune older channel revisions", permission = Permissions.CHANNELS_MANAGE, type = ExecuteType.SYNC)
     int pruneChannelHistory(@Param("channelId") @Parameter(description = "The ID of the Channel", required = true) @QueryParam("channelId") String channelId,
             @Param("revision") @Parameter(description = "Keep this revision and newer, delete older", required = true) @QueryParam("revision") String revision) throws ClientException;
@@ -98,6 +117,9 @@ public interface ChannelHistoryServletInterface extends BaseServletInterface {
     @POST
     @Path("/pruneCodeTemplateHistory")
     @Operation(summary = "Delete code template revisions older than the specified revision")
+    @ApiResponse(content = {
+            @Content(mediaType = MediaType.APPLICATION_XML),
+            @Content(mediaType = MediaType.APPLICATION_JSON) })
     @MirthOperation(name = "pruneCodeTemplateHistory", display = "Prune older code template revisions", permission = Permissions.CODE_TEMPLATES_MANAGE, type = ExecuteType.SYNC)
     int pruneCodeTemplateHistory(@Param("codeTemplateId") @Parameter(description = "The ID of the CodeTemplate", required = true) @QueryParam("codeTemplateId") String codeTemplateId,
             @Param("revision") @Parameter(description = "Keep this revision and newer, delete older", required = true) @QueryParam("revision") String revision) throws ClientException;
