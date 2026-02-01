@@ -25,9 +25,11 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -36,8 +38,14 @@ import javax.swing.JScrollPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+
+import javax.swing.AbstractAction;
+import javax.swing.JComponent;
+import javax.swing.KeyStroke;
 
 import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.model.Channel;
@@ -74,6 +82,16 @@ public class ChannelHistoryDialog extends JDialog {
 
         setSize(700, 400);
         setLocationRelativeTo(parent);
+
+        // Escape key closes dialog
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "close");
+        getRootPane().getActionMap().put("close", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                dispose();
+            }
+        });
     }
 
     private void initComponents() {
@@ -108,6 +126,16 @@ public class ChannelHistoryDialog extends JDialog {
                 handlePopup(e);
             }
 
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    int row = tblRevisions.rowAtPoint(e.getPoint());
+                    if (row >= 0) {
+                        compareWithPrevious(row);
+                    }
+                }
+            }
+
             private void handlePopup(MouseEvent e) {
                 if (e.isPopupTrigger()) {
                     int row = tblRevisions.rowAtPoint(e.getPoint());
@@ -127,6 +155,31 @@ public class ChannelHistoryDialog extends JDialog {
         JScrollPane scrollPane = new JScrollPane(tblRevisions);
         add(scrollPane, BorderLayout.CENTER);
 
+        // Bottom panel with help and buttons
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+
+        // Help icon with tooltip and click handler
+        JLabel helpLabel = new JLabel(new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/help.png")));
+        String helpText = "<html>" +
+                "<b>Double-click</b> a revision to compare with previous<br>" +
+                "<b>Ctrl/Cmd-click</b> to select two revisions, then Show Diff<br>" +
+                "<b>Right-click</b> for prune option" +
+                "</html>";
+        helpLabel.setToolTipText(helpText);
+        helpLabel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        helpLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                JOptionPane.showMessageDialog(ChannelHistoryDialog.this,
+                        helpText,
+                        "Help",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+        JPanel helpPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        helpPanel.add(helpLabel);
+        bottomPanel.add(helpPanel, BorderLayout.WEST);
+
         // Button panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
 
@@ -144,7 +197,8 @@ public class ChannelHistoryDialog extends JDialog {
         btnClose.addActionListener(e -> dispose());
         buttonPanel.add(btnClose);
 
-        add(buttonPanel, BorderLayout.SOUTH);
+        bottomPanel.add(buttonPanel, BorderLayout.EAST);
+        add(bottomPanel, BorderLayout.SOUTH);
     }
 
     private void updateButtonStates() {
@@ -200,6 +254,25 @@ public class ChannelHistoryDialog extends JDialog {
         } catch (Exception e) {
             PlatformUI.MIRTH_FRAME.alertThrowable(PlatformUI.MIRTH_FRAME, e);
         }
+    }
+
+    private void compareWithPrevious(int row) {
+        int totalRows = tblRevisions.getRowCount();
+        if (row >= totalRows - 1) {
+            JOptionPane.showMessageDialog(this,
+                    "No previous revision to compare to.",
+                    "Compare",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Select the clicked row and the next row (previous revision)
+        tblRevisions.setRowSelectionInterval(row, row);
+        tblRevisions.addRowSelectionInterval(row + 1, row + 1);
+        showDiff();
+
+        // Restore selection to just the originally clicked row
+        tblRevisions.setRowSelectionInterval(row, row);
     }
 
     private Channel parseChannel(String xml, String rev) {
