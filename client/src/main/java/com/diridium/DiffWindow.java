@@ -18,10 +18,15 @@ package com.diridium;
 */
 
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 
+import javax.swing.AbstractAction;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 
 /**
  * The main window for showing diff.
@@ -37,6 +42,16 @@ public class DiffWindow extends JDialog {
         this.leftLabel = leftLabel;
         this.rightLabel = rightLabel;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+
+        // Escape key closes dialog
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "close");
+        getRootPane().getActionMap().put("close", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                dispose();
+            }
+        });
     }
 
     public static DiffWindow create(Dialog parent, String title, String leftLabel, String rightLabel,
