@@ -51,10 +51,10 @@ The plugin zip will be in `package/target/simple-channel-history-<version>.zip`.
 
 ## Installation
 
-1. Stop OIE
-2. Extract the zip to the `extensions` directory
-3. Start OIE
-4. The plugin will create the necessary database tables on first startup
+Install using the Extensions manager in the OIE Administrator, or manually extract
+to the `extensions` directory. A restart is required after installation.
+
+The plugin will create the necessary database tables on first startup.
 
 ## Usage
 
