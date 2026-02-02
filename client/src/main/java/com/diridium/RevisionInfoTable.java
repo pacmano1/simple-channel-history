@@ -32,5 +32,6 @@ public class RevisionInfoTable extends MirthTable {
         super();
         Highlighter rowStriper = HighlighterFactory.createAlternateStriping(UIConstants.HIGHLIGHTER_COLOR, UIConstants.BACKGROUND_COLOR);
         setHighlighters(rowStriper);
+        setSortable(false);
     }
 }
