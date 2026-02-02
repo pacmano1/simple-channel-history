@@ -5,3 +5,7 @@ target
 .idea/
 *.iml
 .DS_Store
+
+# Signing configuration (machine-specific, contains secrets)
+yubikey-pkcs11.cfg
+certchain.pem

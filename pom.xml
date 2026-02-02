@@ -28,7 +28,7 @@
     <packaging>pom</packaging>
 
     <properties>
-        <revision>2.0.0-SNAPSHOT</revision>
+        <revision>2.0.0</revision>
 
         <plugin.supported.mc.versions>${mc.version}</plugin.supported.mc.versions>
 
@@ -50,16 +50,30 @@
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <signing.keystore>${user.dir}/gitextplugin.jks</signing.keystore>
-        <signing.alias>alias</signing.alias>
-        <signing.storepass>secret</signing.storepass>
-        <signing.keypass>secret</signing.keypass>
-        <signing.tsa />
+        <!-- Signing disabled by default. Use -Psigning to enable. -->
+        <signing.skip>true</signing.skip>
     </properties>
 
+    <profiles>
+        <profile>
+            <id>signing</id>
+            <properties>
+                <signing.skip>false</signing.skip>
+                <signing.keystore>NONE</signing.keystore>
+                <signing.storetype>PKCS11</signing.storetype>
+                <signing.providerClass>sun.security.pkcs11.SunPKCS11</signing.providerClass>
+                <signing.providerArg>${user.dir}/yubikey-pkcs11.cfg</signing.providerArg>
+                <signing.alias>Certificate for PIV Authentication</signing.alias>
+                <signing.storepass>${env.YUBIKEY_PIN}</signing.storepass>
+                <signing.certchain>${user.dir}/certchain.pem</signing.certchain>
+                <signing.tsa>http://timestamp.digicert.com</signing.tsa>
+            </properties>
+        </profile>
+    </profiles>
+
     <organization>
-        <name>Kiran Ayyagari</name>
-        <url>mailto:kayyagari@apache.org</url>
+        <name>Diridium Technologies Inc.</name>
+        <url>https://github.com/pacmano1/simple-channel-history</url>
     </organization>
 
     <repositories>
@@ -262,7 +276,7 @@
                         <manifestEntries>
                             <Application-Name>Simple Channel History</Application-Name>
                             <url>${project.url}</url>
-                            <authors>Kiran Ayyagari</authors>
+                            <authors>Kiran Ayyagari, Diridium Technologies Inc.</authors>
                         </manifestEntries>
                     </archive>
                 </configuration>
