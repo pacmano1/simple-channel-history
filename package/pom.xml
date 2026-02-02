@@ -112,6 +112,7 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <skip>${signing.skip}</skip>
                     <archiveDirectory>${project.build.directory}/to-be-packed</archiveDirectory>
                     <includes>
                         <include>*${project.version}*.jar</include>
@@ -119,10 +120,16 @@
                         <include>ognl-*.jar</include>
                     </includes>
                     <keystore>${signing.keystore}</keystore>
+                    <storetype>${signing.storetype}</storetype>
+                    <providerClass>${signing.providerClass}</providerClass>
+                    <providerArg>${signing.providerArg}</providerArg>
                     <alias>${signing.alias}</alias>
                     <storepass>${signing.storepass}</storepass>
-                    <keypass>${signing.keypass}</keypass>
                     <tsa>${signing.tsa}</tsa>
+                    <arguments>
+                        <argument>-certchain</argument>
+                        <argument>${signing.certchain}</argument>
+                    </arguments>
                 </configuration>
             </plugin>
             <!-- use assembly plugin to pack all jars into a zip -->

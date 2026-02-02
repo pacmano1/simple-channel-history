@@ -20,10 +20,31 @@ An Open Integration Engine plugin for tracking version history of Channels and C
 
 ## Building
 
-Requires OIE libraries in your Maven repository (local or remote).
+Requires Java 17+ and OIE libraries in your Maven repository (local or remote).
+
+### Development Build (unsigned)
 
 ```bash
 mvn clean package
+```
+
+### Release Build (signed with YubiKey)
+
+Signed builds require a YubiKey with a code signing certificate and the OpenSC PKCS#11 library.
+
+1. Copy `yubikey-pkcs11.cfg.example` to `yubikey-pkcs11.cfg` and update the library path for your system
+2. Create `certchain.pem` containing your certificate chain (your cert + intermediate CA + root CA in PEM format)
+3. Build with the signing profile:
+
+```bash
+mvn clean package -Psigning -Dsigning.storepass=<your-yubikey-pin>
+```
+
+Or set the PIN via environment variable:
+
+```bash
+export YUBIKEY_PIN=<your-pin>
+mvn clean package -Psigning
 ```
 
 The plugin zip will be in `package/target/simple-channel-history-<version>.zip`.

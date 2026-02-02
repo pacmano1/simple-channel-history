@@ -1,0 +1,11 @@
+# PKCS#11 configuration for YubiKey code signing
+# Copy this file to yubikey-pkcs11.cfg and update the library path for your system
+#
+# macOS (Homebrew): /opt/homebrew/lib/opensc-pkcs11.so (Apple Silicon)
+#                   /usr/local/lib/opensc-pkcs11.so (Intel)
+# Linux:            /usr/lib/opensc-pkcs11.so
+# Windows:          C:\Program Files\OpenSC Project\OpenSC\pkcs11\opensc-pkcs11.dll
+
+name = YubiKey
+library = /opt/homebrew/lib/opensc-pkcs11.so
+slotListIndex = 0
