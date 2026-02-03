@@ -77,6 +77,9 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
         }
     }
 
+    private static final String REVERT_HISTORY_BEGIN = "--- BEGIN REVERT HISTORY (do not delete these tags) ---";
+    private static final String REVERT_HISTORY_END = "--- END REVERT HISTORY ---";
+
     @Override
     @CheckAuthorizedChannelId
     public boolean revertChannel(String channelId, String revision) throws ClientException {
@@ -91,9 +94,44 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
             // on the client when user tries to save the same channel after reverting
             metadata.setUserId(context.getUserId());
 
-            String desc = channel.getDescription();
-            desc = desc + "\n(" + "reverted to revision " + revision + ")";
-            channel.setDescription(desc);
+            // Get original description from the revision we're reverting to
+            String oldDesc = channel.getDescription();
+            if (oldDesc == null) {
+                oldDesc = "";
+            }
+            // Remove any existing revert history from the old description
+            int beginIdx = oldDesc.indexOf(REVERT_HISTORY_BEGIN);
+            if (beginIdx >= 0) {
+                oldDesc = oldDesc.substring(0, beginIdx).trim();
+            }
+
+            // Extract existing revert history from current channel (if any)
+            String existingHistory = "";
+            Channel currentChannel = channelController.getChannelById(channelId);
+            if (currentChannel != null && currentChannel.getDescription() != null) {
+                String currentDesc = currentChannel.getDescription();
+                int currentBegin = currentDesc.indexOf(REVERT_HISTORY_BEGIN);
+                int currentEnd = currentDesc.indexOf(REVERT_HISTORY_END);
+                if (currentBegin >= 0 && currentEnd > currentBegin) {
+                    existingHistory = currentDesc.substring(currentBegin + REVERT_HISTORY_BEGIN.length(), currentEnd).trim();
+                }
+            }
+
+            // Build new revert entry using the revision number from the history table
+            String username = repo.getUserName(context.getUserId());
+            int revisionNumber = repo.getChannelRevisionNumber(channelId, revision);
+            String newEntry = "(reverted to Rev " + revisionNumber + " by " + username + " at " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date()) + ")";
+
+            // Combine: old description + revert history section at the end (newest first)
+            StringBuilder newDesc = new StringBuilder(oldDesc);
+            newDesc.append("\n\n").append(REVERT_HISTORY_BEGIN).append("\n");
+            newDesc.append(newEntry).append("\n");
+            if (!existingHistory.isEmpty()) {
+                newDesc.append(existingHistory).append("\n");
+            }
+            newDesc.append(REVERT_HISTORY_END);
+
+            channel.setDescription(newDesc.toString());
             boolean result = channelController.updateChannel(channel, context, true, Calendar.getInstance());
             log.debug("reverted Channel {} to revision {}", channelId, revision);
             return result;
