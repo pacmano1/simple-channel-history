@@ -145,6 +145,28 @@ public class DatabaseHistoryRepository {
         return null;
     }
 
+    public int getChannelRevisionNumber(String channelId, String historyId) {
+        String sql = "SELECT revision FROM channel_history WHERE id = ? AND channel_id = ?";
+
+        try (SqlSession session = SqlConfig.getInstance().getSqlSessionManager().openSession(true);
+             Connection conn = session.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, Long.parseLong(historyId));
+            ps.setString(2, channelId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("revision");
+                }
+            }
+        } catch (SQLException e) {
+            log.error("Failed to get revision number for {} at history {}", channelId, historyId, e);
+        }
+
+        return -1;
+    }
+
     public Channel getChannelAtRevision(String channelId, String historyId) throws Exception {
         // First verify this isn't the latest entry
         List<RevisionInfo> history = getChannelHistory(channelId);
@@ -321,7 +343,7 @@ public class DatabaseHistoryRepository {
 
     // ========== Helper Methods ==========
 
-    private String getUserName(int userId) {
+    public String getUserName(int userId) {
         try {
             com.mirth.connect.model.User user = userController.getUser(userId, null);
             if (user != null) {

@@ -17,6 +17,8 @@ package com.diridium;
    limitations under the License.
 */
 
+import java.util.List;
+
 import javax.swing.ImageIcon;
 
 import com.mirth.connect.client.ui.Frame;
@@ -61,12 +63,15 @@ public class ChannelHistoryPlugin extends ClientPlugin {
     }
 
     public void viewChannelHistory() {
-        Channel selectedChannel = parent.channelPanel.getSelectedChannels().get(0);
-        if (selectedChannel == null) {
-            parent.alertWarning(parent, "Please select a channel to view its history.");
+        List<Channel> selectedChannels = parent.channelPanel.getSelectedChannels();
+        boolean isGroupSelected = parent.channelPanel.isGroupSelected();
+
+        if (selectedChannels.size() != 1 || isGroupSelected) {
+            parent.alertWarning(parent, "Please select a single channel to view its history.");
             return;
         }
 
+        Channel selectedChannel = selectedChannels.get(0);
         ChannelHistoryDialog dialog = new ChannelHistoryDialog(parent, selectedChannel.getId(), selectedChannel.getName());
         dialog.setVisible(true);
     }
