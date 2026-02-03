@@ -1,4 +1,4 @@
-# Simple Channel History
+# Simple Channel and Code Tempalte History
 
 An Open Integration Engine plugin for tracking version history of Channels and Code Templates.
 
