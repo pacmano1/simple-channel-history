@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -234,23 +235,35 @@ public class ChannelHistoryDialog extends JDialog {
         }
 
         RevisionInfoTableModel model = (RevisionInfoTableModel) tblRevisions.getModel();
-        RevisionInfo ri1 = model.getRevisionAt(rows[0]);
-        RevisionInfo ri2 = model.getRevisionAt(rows[1]);
+        // rows[0] = newer (lower row index, table is newest-first), rows[1] = older
+        // Assign left = older, right = newer to match standard diff convention
+        RevisionInfo older = model.getRevisionAt(rows[1]);
+        RevisionInfo newer = model.getRevisionAt(rows[0]);
 
         try {
-            String left = servlet.getContent(channelId, ri1.getHash());
-            Channel leftCh = parseChannel(left, ri1.getShortHash());
+            String left = servlet.getContent(channelId, older.getHash());
+            Channel leftCh = parseChannel(left, older.getShortHash());
 
-            String right = servlet.getContent(channelId, ri2.getHash());
-            Channel rightCh = parseChannel(right, ri2.getShortHash());
+            String right = servlet.getContent(channelId, newer.getHash());
+            Channel rightCh = parseChannel(right, newer.getShortHash());
 
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-            String leftLabel = String.format("Revision: %s (user: %s, time: %s)", ri1.getShortHash(), ri1.getCommitterName(), sdf.format(new Date(ri1.getTime())));
-            String rightLabel = String.format("Revision: %s (user: %s, time: %s)", ri2.getShortHash(), ri2.getCommitterName(), sdf.format(new Date(ri2.getTime())));
+            String leftLabel = String.format("Old - %s (user: %s, time: %s)", older.getShortHash(), older.getCommitterName(), sdf.format(new Date(older.getTime())));
+            String rightLabel = String.format("New - %s (user: %s, time: %s)", newer.getShortHash(), newer.getCommitterName(), sdf.format(new Date(newer.getTime())));
 
-            DiffWindow dw = DiffWindow.create(this, "Channel Diff - " + channelName, leftLabel, rightLabel, leftCh, rightCh, left, right);
-            dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
-            dw.setVisible(true);
+            try {
+                Map<String, DecomposedComponent> leftComponents = ChannelXmlDecomposer.decompose(left);
+                Map<String, DecomposedComponent> rightComponents = ChannelXmlDecomposer.decompose(right);
+                DecomposedDiffWindow dw = DecomposedDiffWindow.create(this, "Channel Diff - " + channelName,
+                        leftLabel, rightLabel, leftComponents, rightComponents, left, right);
+                dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
+                dw.setVisible(true);
+            } catch (Exception decompositionEx) {
+                // Fallback to original monolithic DiffWindow
+                DiffWindow dw = DiffWindow.create(this, "Channel Diff - " + channelName, leftLabel, rightLabel, leftCh, rightCh, left, right);
+                dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
+                dw.setVisible(true);
+            }
         } catch (Exception e) {
             PlatformUI.MIRTH_FRAME.alertThrowable(PlatformUI.MIRTH_FRAME, e);
         }

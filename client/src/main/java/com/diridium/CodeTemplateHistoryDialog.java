@@ -236,19 +236,21 @@ public class CodeTemplateHistoryDialog extends JDialog {
         }
 
         RevisionInfoTableModel model = (RevisionInfoTableModel) tblRevisions.getModel();
-        RevisionInfo ri1 = model.getRevisionAt(rows[0]);
-        RevisionInfo ri2 = model.getRevisionAt(rows[1]);
+        // rows[0] = newer (lower row index, table is newest-first), rows[1] = older
+        // Assign left = older, right = newer to match standard diff convention
+        RevisionInfo older = model.getRevisionAt(rows[1]);
+        RevisionInfo newer = model.getRevisionAt(rows[0]);
 
         try {
-            String left = servlet.getCodeTemplateContent(codeTemplateId, ri1.getHash());
+            String left = servlet.getCodeTemplateContent(codeTemplateId, older.getHash());
             CodeTemplate leftCt = serializer.deserialize(left, CodeTemplate.class);
 
-            String right = servlet.getCodeTemplateContent(codeTemplateId, ri2.getHash());
+            String right = servlet.getCodeTemplateContent(codeTemplateId, newer.getHash());
             CodeTemplate rightCt = serializer.deserialize(right, CodeTemplate.class);
 
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-            String leftLabel = String.format("Revision: %s (user: %s, time: %s)", ri1.getShortHash(), ri1.getCommitterName(), sdf.format(new Date(ri1.getTime())));
-            String rightLabel = String.format("Revision: %s (user: %s, time: %s)", ri2.getShortHash(), ri2.getCommitterName(), sdf.format(new Date(ri2.getTime())));
+            String leftLabel = String.format("Old - %s (user: %s, time: %s)", older.getShortHash(), older.getCommitterName(), sdf.format(new Date(older.getTime())));
+            String rightLabel = String.format("New - %s (user: %s, time: %s)", newer.getShortHash(), newer.getCommitterName(), sdf.format(new Date(newer.getTime())));
 
             DiffWindow dw = DiffWindow.create(this, "Code Template Diff - " + codeTemplateName, leftLabel, rightLabel, leftCt, rightCt, left, right);
             dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
