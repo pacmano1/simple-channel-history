@@ -19,6 +19,10 @@ package com.diridium;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
@@ -26,8 +30,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -36,17 +42,9 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
-
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-
-import javax.swing.AbstractAction;
-import javax.swing.JComponent;
-import javax.swing.KeyStroke;
 
 import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.model.Channel;
@@ -76,7 +74,7 @@ public class ChannelHistoryDialog extends JDialog {
         this.channelId = channelId;
         this.channelName = channelName;
         this.serializer = ObjectXMLSerializer.getInstance();
-        this.serializer.allowTypes(Collections.EMPTY_LIST, Arrays.asList(RevisionInfo.class.getPackage().getName() + ".**"), Collections.EMPTY_LIST);
+        this.serializer.allowTypes(Collections.emptyList(), Arrays.asList(RevisionInfo.class.getPackage().getName() + ".**"), Collections.emptyList());
 
         initComponents();
         loadHistory();
@@ -259,7 +257,8 @@ public class ChannelHistoryDialog extends JDialog {
                 dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
                 dw.setVisible(true);
             } catch (Exception decompositionEx) {
-                // Fallback to original monolithic DiffWindow
+                // Fallback to original monolithic DiffWindow — log so failures aren't invisible
+                System.err.println("Channel decomposition failed, falling back to raw diff: " + decompositionEx.getMessage());
                 DiffWindow dw = DiffWindow.create(this, "Channel Diff - " + channelName, leftLabel, rightLabel, leftCh, rightCh, left, right);
                 dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
                 dw.setVisible(true);

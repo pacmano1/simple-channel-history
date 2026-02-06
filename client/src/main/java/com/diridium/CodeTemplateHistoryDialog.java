@@ -77,7 +77,7 @@ public class CodeTemplateHistoryDialog extends JDialog {
         this.codeTemplateId = codeTemplateId;
         this.codeTemplateName = codeTemplateName;
         this.serializer = ObjectXMLSerializer.getInstance();
-        this.serializer.allowTypes(Collections.EMPTY_LIST, Arrays.asList(RevisionInfo.class.getPackage().getName() + ".**"), Collections.EMPTY_LIST);
+        this.serializer.allowTypes(Collections.emptyList(), Arrays.asList(RevisionInfo.class.getPackage().getName() + ".**"), Collections.emptyList());
 
         initComponents();
         loadHistory();

@@ -86,8 +86,8 @@ public class ChannelXmlDecomposer {
         List<String> destGroupNames = new ArrayList<>();
         for (int i = 0; i < destConnectors.getLength(); i++) {
             Element connector = (Element) destConnectors.item(i);
-            String connName = getChildText(connector, "name");
-            String metaDataId = getChildText(connector, "metaDataId");
+            String connName = getDirectChildText(connector, "name");
+            String metaDataId = getDirectChildText(connector, "metaDataId");
             String groupName = "Destination: " + connName + " [" + metaDataId + "]";
             destElements.add(connector);
             destGroupNames.add(groupName);
@@ -225,17 +225,6 @@ public class ChannelXmlDecomposer {
     }
 
     private static String getDirectChildText(Element parent, String childName) {
-        NodeList children = parent.getChildNodes();
-        for (int i = 0; i < children.getLength(); i++) {
-            Node child = children.item(i);
-            if (child instanceof Element && child.getNodeName().equals(childName)) {
-                return child.getTextContent();
-            }
-        }
-        return null;
-    }
-
-    private static String getChildText(Element parent, String childName) {
         NodeList children = parent.getChildNodes();
         for (int i = 0; i < children.getLength(); i++) {
             Node child = children.item(i);
