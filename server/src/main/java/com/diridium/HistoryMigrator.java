@@ -40,7 +40,7 @@ public class HistoryMigrator extends Migrator {
             executeScript(scriptName);
             log.info("History tables created successfully");
         } catch (Exception e) {
-            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            String msg = e.getMessage() != null ? e.getMessage().toLowerCase(java.util.Locale.ROOT) : "";
             if (msg.contains("already exist")) {
                 log.info("History tables already exist, skipping creation");
             } else {

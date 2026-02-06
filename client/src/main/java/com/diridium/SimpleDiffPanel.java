@@ -115,6 +115,9 @@ public class SimpleDiffPanel extends JPanel {
         JTextPane pane = new JTextPane() {
             @Override
             public boolean getScrollableTracksViewportWidth() {
+                if (getParent() == null || getUI() == null) {
+                    return false;
+                }
                 return getUI().getPreferredSize(this).width <= getParent().getSize().width;
             }
         };

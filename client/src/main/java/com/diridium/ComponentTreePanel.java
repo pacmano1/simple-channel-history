@@ -60,7 +60,7 @@ public class ComponentTreePanel extends JPanel {
     private final Map<String, ChangeType> changeTypes;
     private final Set<String> allKeys;
     private JTree tree;
-    private JCheckBox showAllCheckBox;
+    private JCheckBox showChangedOnlyCheckBox;
     private ComponentSelectionListener listener;
 
     public ComponentTreePanel(Map<String, DecomposedComponent> leftComponents,
@@ -90,9 +90,9 @@ public class ComponentTreePanel extends JPanel {
 
         add(new JScrollPane(tree), BorderLayout.CENTER);
 
-        showAllCheckBox = new JCheckBox("Show Changed Only", false);
-        showAllCheckBox.addActionListener(e -> rebuildTree());
-        add(showAllCheckBox, BorderLayout.SOUTH);
+        showChangedOnlyCheckBox = new JCheckBox("Show Changed Only", false);
+        showChangedOnlyCheckBox.addActionListener(e -> rebuildTree());
+        add(showChangedOnlyCheckBox, BorderLayout.SOUTH);
 
         rebuildTree();
     }
@@ -173,7 +173,7 @@ public class ComponentTreePanel extends JPanel {
     }
 
     private void rebuildTree() {
-        boolean changedOnly = showAllCheckBox.isSelected();
+        boolean changedOnly = showChangedOnlyCheckBox.isSelected();
         DefaultMutableTreeNode root = new DefaultMutableTreeNode("Components");
 
         // Group keys by parentGroup, preserving insertion order
@@ -361,7 +361,7 @@ public class ComponentTreePanel extends JPanel {
         }
     }
 
-    private class ChangedNodeRenderer extends DefaultTreeCellRenderer {
+    private static class ChangedNodeRenderer extends DefaultTreeCellRenderer {
         @Override
         public Component getTreeCellRendererComponent(JTree tree, Object value,
                 boolean sel, boolean expanded, boolean leaf, int row, boolean hasFocus) {

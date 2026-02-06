@@ -259,6 +259,7 @@ public class ChannelHistoryDialog extends JDialog {
             } catch (Exception decompositionEx) {
                 // Fallback to original monolithic DiffWindow — log so failures aren't invisible
                 System.err.println("Channel decomposition failed, falling back to raw diff: " + decompositionEx.getMessage());
+                decompositionEx.printStackTrace();
                 DiffWindow dw = DiffWindow.create(this, "Channel Diff - " + channelName, leftLabel, rightLabel, leftCh, rightCh, left, right);
                 dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
                 dw.setVisible(true);
