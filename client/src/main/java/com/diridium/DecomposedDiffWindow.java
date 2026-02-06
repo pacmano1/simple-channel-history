@@ -83,7 +83,7 @@ public class DecomposedDiffWindow extends JDialog {
     }
 
     private void buildContent(String leftLabel, String rightLabel) {
-        // Revision labels
+        // Revision labels — placed above the diff container so they align with left/right panes
         JPanel labelPanel = new JPanel(new GridLayout(1, 2));
         JLabel lblLeft = new JLabel(leftLabel, JLabel.CENTER);
         Font labelFont = new Font(lblLeft.getFont().getName(), Font.BOLD, 14);
@@ -108,10 +108,15 @@ public class DecomposedDiffWindow extends JDialog {
         treeWithSummary.add(treePanel, BorderLayout.CENTER);
         treeWithSummary.add(summaryLabel, BorderLayout.SOUTH);
 
+        // Diff container with labels above it so they align with left/right panes
         diffContainer = new JPanel(new BorderLayout());
         diffContainer.setMinimumSize(new Dimension(0, 0));
 
-        JSplitPane decomposedSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, treeWithSummary, diffContainer);
+        JPanel diffWithLabels = new JPanel(new BorderLayout());
+        diffWithLabels.add(labelPanel, BorderLayout.NORTH);
+        diffWithLabels.add(diffContainer, BorderLayout.CENTER);
+
+        JSplitPane decomposedSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, treeWithSummary, diffWithLabels);
         decomposedSplit.setDividerLocation(280);
         decomposedSplit.setOneTouchExpandable(true);
 
@@ -125,12 +130,8 @@ public class DecomposedDiffWindow extends JDialog {
         toggleButton = new JButton("Show Raw XML");
         toggleButton.addActionListener(e -> toggleView());
 
-        JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.add(labelPanel, BorderLayout.CENTER);
-        topPanel.add(toggleButton, BorderLayout.EAST);
-
         JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.add(topPanel, BorderLayout.NORTH);
+        mainPanel.add(toggleButton, BorderLayout.NORTH);
         mainPanel.add(cardPanel, BorderLayout.CENTER);
 
         add(mainPanel);
