@@ -24,8 +24,6 @@ import java.util.List;
 
 import javax.swing.table.AbstractTableModel;
 
-import org.joda.time.Period;
-
 /**
  * @author Kiran Ayyagari (kayyagari@apache.org)
  */
@@ -85,22 +83,20 @@ public class RevisionInfoTableModel extends AbstractTableModel {
     }
 
     private String formatTime(long t) {
-        Period period = new Period(t, System.currentTimeMillis());
-        String txt = null;
-        int hours = period.getHours();
-        if(hours > 0) {
-            txt = df.format(new Date(t));
-        }
-        else {
-            int min = period.getMinutes();
-            if(min > 0) {
-                txt = min + " minutes ago";
-            }
-            else {
-                txt = period.getSeconds() + " seconds ago";
-            }
+        long elapsed = System.currentTimeMillis() - t;
+        if (elapsed < 0) {
+            return df.format(new Date(t));
         }
 
-        return txt;
+        long seconds = elapsed / 1000;
+        long minutes = seconds / 60;
+
+        if (minutes >= 60) {
+            return df.format(new Date(t));
+        } else if (minutes > 0) {
+            return minutes + " minutes ago";
+        } else {
+            return seconds + " seconds ago";
+        }
     }
 }

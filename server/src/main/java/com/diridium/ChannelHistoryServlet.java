@@ -56,6 +56,7 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
     }
 
     @Override
+    @CheckAuthorizedChannelId
     public List<RevisionInfo> getHistory(String channelId) throws ClientException {
         try {
             return repo.getChannelHistory(channelId);
@@ -67,6 +68,7 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
     }
 
     @Override
+    @CheckAuthorizedChannelId
     public String getContent(String channelId, String revision) throws ClientException {
         try {
             return repo.getChannelContent(channelId, revision);

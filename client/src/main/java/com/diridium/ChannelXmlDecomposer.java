@@ -44,6 +44,8 @@ public class ChannelXmlDecomposer {
 
     public static Map<String, DecomposedComponent> decompose(String channelXml) throws Exception {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
         dbf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
         dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
         dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
