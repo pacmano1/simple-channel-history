@@ -46,6 +46,9 @@ import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.InvalidChannel;
@@ -57,6 +60,7 @@ import com.mirth.connect.model.converters.ObjectXMLSerializer;
  * @author Kiran Ayyagari (kayyagari@apache.org)
  */
 public class ChannelHistoryDialog extends JDialog {
+    private static final Logger log = LoggerFactory.getLogger(ChannelHistoryDialog.class);
 
     private String channelId;
     private String channelName;
@@ -258,8 +262,7 @@ public class ChannelHistoryDialog extends JDialog {
                 dw.setVisible(true);
             } catch (Exception decompositionEx) {
                 // Fallback to original monolithic DiffWindow — log so failures aren't invisible
-                System.err.println("Channel decomposition failed, falling back to raw diff: " + decompositionEx.getMessage());
-                decompositionEx.printStackTrace();
+                log.warn("Channel decomposition failed, falling back to raw diff: {}", decompositionEx.getMessage(), decompositionEx);
                 DiffWindow dw = DiffWindow.create(this, "Channel Diff - " + channelName, leftLabel, rightLabel, leftCh, rightCh, left, right);
                 dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
                 dw.setVisible(true);
