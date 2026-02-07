@@ -50,6 +50,7 @@ public class ChannelXmlDecomposer {
         dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
         dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
         DocumentBuilder db = dbf.newDocumentBuilder();
+        db.setErrorHandler(new org.xml.sax.helpers.DefaultHandler());
         Document doc = db.parse(new InputSource(new StringReader(channelXml)));
 
         XPath xpath = XPathFactory.newInstance().newXPath();

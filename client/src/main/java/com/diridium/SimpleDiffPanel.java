@@ -51,10 +51,10 @@ public class SimpleDiffPanel extends JPanel {
 
     private static final Color COLOR_ADDED = new Color(200, 255, 200);      // Light green
     private static final Color COLOR_DELETED = new Color(255, 200, 200);    // Light red
-    private static final Color COLOR_CHANGED = new Color(200, 200, 255);    // Light blue
-    private static final Color COLOR_CHANGED_OLD = new Color(255, 255, 200); // Light yellow
-    private static final Color COLOR_HIGHLIGHT_OLD = new Color(255, 210, 120); // Darker yellow for changed words
-    private static final Color COLOR_HIGHLIGHT_NEW = new Color(140, 140, 255); // Darker blue for changed words
+    private static final Color COLOR_CHANGED_OLD = COLOR_DELETED;           // Changed old side = light red
+    private static final Color COLOR_CHANGED_NEW = COLOR_ADDED;             // Changed new side = light green
+    private static final Color COLOR_HIGHLIGHT_OLD = new Color(255, 150, 150); // Darker red for changed words
+    private static final Color COLOR_HIGHLIGHT_NEW = new Color(130, 220, 130); // Darker green for changed words
     private static final Color COLOR_LINE_NUMBER_BG = new Color(240, 240, 240); // Light gray
 
     private JTextPane leftPane;
@@ -205,7 +205,7 @@ public class SimpleDiffPanel extends JPanel {
         StyleConstants.setBackground(changedOldStyle, COLOR_CHANGED_OLD);
 
         Style changedNewStyle = leftDoc.addStyle("changedNew", null);
-        StyleConstants.setBackground(changedNewStyle, COLOR_CHANGED);
+        StyleConstants.setBackground(changedNewStyle, COLOR_CHANGED_NEW);
 
         Style highlightOldStyle = leftDoc.addStyle("highlightOld", null);
         StyleConstants.setBackground(highlightOldStyle, COLOR_HIGHLIGHT_OLD);
@@ -219,7 +219,7 @@ public class SimpleDiffPanel extends JPanel {
         Style rightChangedOld = rightDoc.addStyle("changedOld", null);
         StyleConstants.setBackground(rightChangedOld, COLOR_CHANGED_OLD);
         Style rightChangedNew = rightDoc.addStyle("changedNew", null);
-        StyleConstants.setBackground(rightChangedNew, COLOR_CHANGED);
+        StyleConstants.setBackground(rightChangedNew, COLOR_CHANGED_NEW);
 
         Style highlightNewStyle = rightDoc.addStyle("highlightNew", null);
         StyleConstants.setBackground(highlightNewStyle, COLOR_HIGHLIGHT_NEW);

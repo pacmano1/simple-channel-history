@@ -20,6 +20,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -28,6 +31,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import javax.swing.Icon;
 import javax.swing.JCheckBox;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -55,12 +59,19 @@ public class ComponentTreePanel extends JPanel {
     private static final Color COLOR_LEFT_ONLY = new Color(200, 50, 50);
     private static final Color COLOR_RIGHT_ONLY = new Color(50, 140, 50);
 
+    private static final int ICON_SIZE = 7;
+    private static final Icon ICON_MODIFIED = createCircleIcon(COLOR_MODIFIED);
+    private static final Icon ICON_LEFT_ONLY = createCircleIcon(COLOR_LEFT_ONLY);
+    private static final Icon ICON_RIGHT_ONLY = createCircleIcon(COLOR_RIGHT_ONLY);
+    private static final Icon ICON_UNCHANGED = createCircleIcon(Color.GRAY);
+
     private final Map<String, DecomposedComponent> leftComponents;
     private final Map<String, DecomposedComponent> rightComponents;
     private final Map<String, ChangeType> changeTypes;
     private final Set<String> allKeys;
     private JTree tree;
     private JCheckBox showChangedOnlyCheckBox;
+    private JCheckBox showLabelsCheckBox;
     private ComponentSelectionListener listener;
 
     public ComponentTreePanel(Map<String, DecomposedComponent> leftComponents,
@@ -92,7 +103,14 @@ public class ComponentTreePanel extends JPanel {
 
         showChangedOnlyCheckBox = new JCheckBox("Show Changed Only", false);
         showChangedOnlyCheckBox.addActionListener(e -> rebuildTree());
-        add(showChangedOnlyCheckBox, BorderLayout.SOUTH);
+
+        showLabelsCheckBox = new JCheckBox("Show Labels", true);
+        showLabelsCheckBox.addActionListener(e -> tree.repaint());
+
+        JPanel checkBoxPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+        checkBoxPanel.add(showChangedOnlyCheckBox);
+        checkBoxPanel.add(showLabelsCheckBox);
+        add(checkBoxPanel, BorderLayout.SOUTH);
 
         rebuildTree();
     }
@@ -328,14 +346,11 @@ public class ComponentTreePanel extends JPanel {
 
         @Override
         public String toString() {
-            switch (changeType) {
-                case LEFT_ONLY:
-                    return displayName + " (removed)";
-                case RIGHT_ONLY:
-                    return displayName + " (added)";
-                default:
-                    return displayName;
-            }
+            return displayName;
+        }
+
+        String toStringWithLabel() {
+            return displayName + changeTypeLabel(changeType);
         }
     }
 
@@ -350,27 +365,39 @@ public class ComponentTreePanel extends JPanel {
 
         @Override
         public String toString() {
-            switch (changeType) {
-                case LEFT_ONLY:
-                    return groupName + " (removed)";
-                case RIGHT_ONLY:
-                    return groupName + " (added)";
-                default:
-                    return groupName;
-            }
+            return groupName;
+        }
+
+        String toStringWithLabel() {
+            return groupName + changeTypeLabel(changeType);
         }
     }
 
-    private static class ChangedNodeRenderer extends DefaultTreeCellRenderer {
+    private static String changeTypeLabel(ChangeType ct) {
+        switch (ct) {
+            case LEFT_ONLY: return " (removed)";
+            case RIGHT_ONLY: return " (added)";
+            case MODIFIED: return " (changed)";
+            default: return "";
+        }
+    }
+
+    private class ChangedNodeRenderer extends DefaultTreeCellRenderer {
         @Override
         public Component getTreeCellRendererComponent(JTree tree, Object value,
                 boolean sel, boolean expanded, boolean leaf, int row, boolean hasFocus) {
             super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus);
 
+            boolean showLabels = showLabelsCheckBox.isSelected();
+
             if (value instanceof DefaultMutableTreeNode) {
                 Object userObj = ((DefaultMutableTreeNode) value).getUserObject();
                 if (userObj instanceof ComponentNodeData) {
                     ComponentNodeData data = (ComponentNodeData) userObj;
+                    if (showLabels) {
+                        setText(data.toStringWithLabel());
+                    }
+                    setIcon(iconForChangeType(data.changeType));
                     Color color = colorForChangeType(data.changeType);
                     if (color != null) {
                         setForeground(color);
@@ -378,6 +405,10 @@ public class ComponentTreePanel extends JPanel {
                     }
                 } else if (userObj instanceof GroupNodeData) {
                     GroupNodeData data = (GroupNodeData) userObj;
+                    if (showLabels) {
+                        setText(data.toStringWithLabel());
+                    }
+                    setIcon(iconForChangeType(data.changeType));
                     Color groupColor = colorForChangeType(data.changeType);
                     if (groupColor != null) {
                         setForeground(groupColor);
@@ -400,5 +431,33 @@ public class ComponentTreePanel extends JPanel {
                     return null;
             }
         }
+    }
+
+    private static Icon iconForChangeType(ChangeType ct) {
+        switch (ct) {
+            case MODIFIED: return ICON_MODIFIED;
+            case LEFT_ONLY: return ICON_LEFT_ONLY;
+            case RIGHT_ONLY: return ICON_RIGHT_ONLY;
+            default: return ICON_UNCHANGED;
+        }
+    }
+
+    private static Icon createCircleIcon(Color color) {
+        return new Icon() {
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(color);
+                g2.fillOval(x, y, ICON_SIZE, ICON_SIZE);
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() { return ICON_SIZE; }
+
+            @Override
+            public int getIconHeight() { return ICON_SIZE; }
+        };
     }
 }
