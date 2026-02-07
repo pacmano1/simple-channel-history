@@ -50,8 +50,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mirth.connect.client.ui.PlatformUI;
-import com.mirth.connect.model.Channel;
-import com.mirth.connect.model.InvalidChannel;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
 
 /**
@@ -66,7 +64,6 @@ public class ChannelHistoryDialog extends JDialog {
     private String channelName;
     private RevisionInfoTable tblRevisions;
     private ChannelHistoryServletInterface servlet;
-    private ObjectXMLSerializer serializer;
     private JButton btnShowDiff;
     private JButton btnRevert;
     private JButton btnClose;
@@ -77,8 +74,7 @@ public class ChannelHistoryDialog extends JDialog {
         super(parent, "Version History - " + channelName, true);
         this.channelId = channelId;
         this.channelName = channelName;
-        this.serializer = ObjectXMLSerializer.getInstance();
-        this.serializer.allowTypes(Collections.emptyList(), Arrays.asList(RevisionInfo.class.getPackage().getName() + ".**"), Collections.emptyList());
+        ObjectXMLSerializer.getInstance().allowTypes(Collections.emptyList(), Arrays.asList(RevisionInfo.class.getPackage().getName() + ".**"), Collections.emptyList());
 
         initComponents();
         loadHistory();
@@ -244,10 +240,7 @@ public class ChannelHistoryDialog extends JDialog {
 
         try {
             String left = servlet.getContent(channelId, older.getHash());
-            Channel leftCh = parseChannel(left, older.getShortHash());
-
             String right = servlet.getContent(channelId, newer.getHash());
-            Channel rightCh = parseChannel(right, newer.getShortHash());
 
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
             String leftLabel = String.format("Old - %s (user: %s, time: %s)", older.getShortHash(), older.getCommitterName(), sdf.format(new Date(older.getTime())));
@@ -263,7 +256,7 @@ public class ChannelHistoryDialog extends JDialog {
             } catch (Exception decompositionEx) {
                 // Fallback to original monolithic DiffWindow — log so failures aren't invisible
                 log.warn("Channel decomposition failed, falling back to raw diff: {}", decompositionEx.getMessage(), decompositionEx);
-                DiffWindow dw = DiffWindow.create(this, "Channel Diff - " + channelName, leftLabel, rightLabel, leftCh, rightCh, left, right);
+                DiffWindow dw = DiffWindow.create(this, "Channel Diff - " + channelName, leftLabel, rightLabel, left, right);
                 dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
                 dw.setVisible(true);
             }
@@ -289,14 +282,6 @@ public class ChannelHistoryDialog extends JDialog {
 
         // Restore selection to just the originally clicked row
         tblRevisions.setRowSelectionInterval(row, row);
-    }
-
-    private Channel parseChannel(String xml, String rev) {
-        Channel ch = serializer.deserialize(xml, Channel.class);
-        if (ch instanceof InvalidChannel) {
-            throw new IllegalStateException("Could not parse channel at revision " + rev);
-        }
-        return ch;
     }
 
     private void revertToSelected() {

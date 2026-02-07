@@ -33,8 +33,6 @@ public class ChannelVersionController implements ChannelPlugin {
 
     private DatabaseHistoryRepository repo;
 
-    private VersionControllerUtil vcUtil;
-
     @Override
     public String getPluginPointName() {
         return ChannelHistoryServletInterface.PLUGIN_NAME;
@@ -43,7 +41,6 @@ public class ChannelVersionController implements ChannelPlugin {
     @Override
     public void start() {
         log.info("starting simple-channel-history channel version controller");
-        vcUtil = new VersionControllerUtil();
         ObjectXMLSerializer serializer = ObjectXMLSerializer.getInstance();
         DatabaseHistoryRepository.init(serializer);
         repo = DatabaseHistoryRepository.getInstance();
@@ -56,8 +53,8 @@ public class ChannelVersionController implements ChannelPlugin {
 
     @Override
     public void save(Channel channel, ServerEventContext sec) {
-        log.info("saving channel {} by user {}", channel.getId(), sec.getUserId());
-        repo.saveChannelHistory(channel, vcUtil.getUserId(sec));
+        log.debug("saving channel {} by user {}", channel.getId(), sec.getUserId());
+        repo.saveChannelHistory(channel, sec.getUserId());
     }
 
     @Override
