@@ -22,6 +22,7 @@ public class DecomposedComponent {
         CHANNEL_SCRIPT,
         CONNECTOR_CONFIGURATION,
         CONNECTOR_SCRIPT,
+        CONNECTOR_PLUGIN,
         FILTER,
         TRANSFORMER,
         RESPONSE_TRANSFORMER,

@@ -251,6 +251,86 @@ public class ChannelXmlDecomposerTest {
     }
 
     @Test
+    public void testPluginPropertiesExtraction() throws Exception {
+        String xml = "<channel version=\"3.9.1\">"
+                + "<id>test-id</id><name>test</name><revision>1</revision>"
+                + "<sourceConnector version=\"3.9.1\">"
+                + "  <metaDataId>0</metaDataId><name>sourceConnector</name>"
+                + "  <properties class=\"com.mirth.connect.connectors.tcp.TcpReceiverProperties\">"
+                + "    <pluginProperties>"
+                + "      <org.openintegrationengine.tlsmanager.shared.properties.TLSConnectorProperties version=\"4.5.2\">"
+                + "        <isTlsManagerEnabled>true</isTlsManagerEnabled>"
+                + "        <clientCertificateAlias>test-cert</clientCertificateAlias>"
+                + "      </org.openintegrationengine.tlsmanager.shared.properties.TLSConnectorProperties>"
+                + "    </pluginProperties>"
+                + "  </properties>"
+                + "  <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "  <filter version=\"3.9.1\"><elements/></filter>"
+                + "</sourceConnector>"
+                + "<destinationConnectors>"
+                + "  <connector version=\"3.9.1\">"
+                + "    <metaDataId>1</metaDataId><name>Dest1</name>"
+                + "    <properties class=\"com.mirth.connect.connectors.tcp.TcpDispatcherProperties\">"
+                + "      <pluginProperties>"
+                + "        <org.openintegrationengine.tlsmanager.shared.properties.TLSConnectorProperties version=\"4.5.2\">"
+                + "          <isTlsManagerEnabled>false</isTlsManagerEnabled>"
+                + "        </org.openintegrationengine.tlsmanager.shared.properties.TLSConnectorProperties>"
+                + "        <com.example.another.PluginProperties>"
+                + "          <setting>value</setting>"
+                + "        </com.example.another.PluginProperties>"
+                + "      </pluginProperties>"
+                + "    </properties>"
+                + "    <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "    <filter version=\"3.9.1\"><elements/></filter>"
+                + "  </connector>"
+                + "</destinationConnectors>"
+                + "</channel>";
+
+        Map<String, DecomposedComponent> components = ChannelXmlDecomposer.decompose(xml);
+
+        // Source connector has one plugin
+        String srcPluginKey = "Source Connector/Plugin: TLSConnectorProperties";
+        DecomposedComponent srcPlugin = components.get(srcPluginKey);
+        assertNotNull("Source TLS plugin should be extracted", srcPlugin);
+        assertEquals(DecomposedComponent.Category.CONNECTOR_PLUGIN, srcPlugin.getCategory());
+        assertEquals("Source Connector", srcPlugin.getParentGroup());
+        assertTrue(srcPlugin.getContent().contains("test-cert"));
+
+        // Destination has two plugins
+        String destTlsKey = "Destination: Dest1 [1]/Plugin: TLSConnectorProperties";
+        DecomposedComponent destTls = components.get(destTlsKey);
+        assertNotNull("Dest TLS plugin should be extracted", destTls);
+        assertTrue(destTls.getContent().contains("isTlsManagerEnabled"));
+
+        String destOtherKey = "Destination: Dest1 [1]/Plugin: PluginProperties";
+        DecomposedComponent destOther = components.get(destOtherKey);
+        assertNotNull("Dest second plugin should be extracted", destOther);
+        assertTrue(destOther.getContent().contains("value"));
+
+        // Plugins should NOT appear in the connector Configuration
+        String srcConfig = components.get("Source Connector/Configuration").getContent();
+        assertFalse(srcConfig.contains("TLSConnectorProperties"));
+        assertFalse(srcConfig.contains("test-cert"));
+
+        String destConfig = components.get("Destination: Dest1 [1]/Configuration").getContent();
+        assertFalse(destConfig.contains("TLSConnectorProperties"));
+        assertFalse(destConfig.contains("PluginProperties"));
+    }
+
+    @Test
+    public void testEmptyPluginPropertiesProducesNoComponents() throws Exception {
+        // The standard test XML has empty <pluginProperties/> — no plugin components should be created
+        String xml = loadResource("channel-for-diffing-version1.xml");
+        Map<String, DecomposedComponent> components = ChannelXmlDecomposer.decompose(xml);
+
+        // No plugin components for any connector
+        for (Map.Entry<String, DecomposedComponent> entry : components.entrySet()) {
+            assertNotEquals("No plugin components expected, but found: " + entry.getKey(),
+                    DecomposedComponent.Category.CONNECTOR_PLUGIN, entry.getValue().getCategory());
+        }
+    }
+
+    @Test
     public void testGetStepTypeName() {
         assertEquals("JavaScriptStep",
                 ChannelXmlDecomposer.getStepTypeName("com.mirth.connect.plugins.javascriptstep.JavaScriptStep"));

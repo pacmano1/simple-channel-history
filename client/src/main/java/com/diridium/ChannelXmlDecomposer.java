@@ -66,6 +66,7 @@ public class ChannelXmlDecomposer {
         if (sourceConnector != null) {
             String srcGroup = "Source Connector";
             extractConnectorScript(xpath, components, (Element) sourceConnector, srcGroup);
+            extractPluginProperties(xpath, components, (Element) sourceConnector, srcGroup);
             extractStepsFromSubElement(xpath, components, (Element) sourceConnector, srcGroup,
                     "filter", "Filter", DecomposedComponent.Category.FILTER);
             extractStepsFromSubElement(xpath, components, (Element) sourceConnector, srcGroup,
@@ -93,6 +94,7 @@ public class ChannelXmlDecomposer {
             destGroupNames.add(groupName);
 
             extractConnectorScript(xpath, components, connector, groupName);
+            extractPluginProperties(xpath, components, connector, groupName);
             extractStepsFromSubElement(xpath, components, connector, groupName,
                     "filter", "Filter", DecomposedComponent.Category.FILTER);
             extractStepsFromSubElement(xpath, components, connector, groupName,
@@ -157,6 +159,32 @@ public class ChannelXmlDecomposer {
             components.put(compKey, new DecomposedComponent(compKey, "Script", content,
                     DecomposedComponent.Category.CONNECTOR_SCRIPT, groupName));
             node.getParentNode().removeChild(node);
+        }
+    }
+
+    private static void extractPluginProperties(XPath xpath,
+            Map<String, DecomposedComponent> components,
+            Element connector, String groupName) throws Exception {
+        Node pluginProps = (Node) xpath.evaluate("properties/pluginProperties", connector, XPathConstants.NODE);
+        if (pluginProps == null) {
+            return;
+        }
+
+        List<Element> plugins = new ArrayList<>();
+        NodeList children = pluginProps.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            if (children.item(i) instanceof Element) {
+                plugins.add((Element) children.item(i));
+            }
+        }
+
+        for (Element plugin : plugins) {
+            String pluginName = getStepTypeName(plugin.getTagName());
+            String compKey = groupName + "/Plugin: " + pluginName;
+            String content = serializeNode(plugin);
+            components.put(compKey, new DecomposedComponent(compKey, "Plugin: " + pluginName, content,
+                    DecomposedComponent.Category.CONNECTOR_PLUGIN, groupName));
+            pluginProps.removeChild(plugin);
         }
     }
 
