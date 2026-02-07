@@ -1,14 +1,20 @@
-# Simple Channel and Code Tempalte History
+# Simple Channel and Code Template History
 
 An Open Integration Engine plugin for tracking version history of Channels and Code Templates.
 
 ## Features
 
 - Automatic version history tracking when channels and code templates are saved
-- Side-by-side diff viewer to compare any two versions
+- Decomposed component diff view with navigable tree (scripts, connectors, filter/transformer steps, plugin properties)
+- Side-by-side diff viewer with word-level inline highlighting
+- Color-coded change indicators (added, removed, modified, unchanged)
 - Revert to any previous version
 - Prune older versions to manage storage
 - Database-backed storage (history travels with database backups)
+
+<img src="https://raw.githubusercontent.com/wiki/pacmano1/simple-channel-history/images/4.jpg" alt="History dialog showing revision table" width="500">
+
+<img src="https://raw.githubusercontent.com/wiki/pacmano1/simple-channel-history/images/5.jpg" alt="Decomposed component diff view with tree navigation and side-by-side comparison" width="700">
 
 ## Supported Databases
 

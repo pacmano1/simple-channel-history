@@ -159,20 +159,23 @@ public class DecomposedDiffWindow extends JDialog {
     private void showComponentDiff(String key) {
         diffContainer.removeAll();
 
-        String leftContent = "";
-        String rightContent = "";
+        if (key != null) {
+            String leftContent = "";
+            String rightContent = "";
 
-        DecomposedComponent leftComp = leftComponents.get(key);
-        DecomposedComponent rightComp = rightComponents.get(key);
+            DecomposedComponent leftComp = leftComponents.get(key);
+            DecomposedComponent rightComp = rightComponents.get(key);
 
-        if (leftComp != null) {
-            leftContent = leftComp.getContent();
+            if (leftComp != null) {
+                leftContent = leftComp.getContent();
+            }
+            if (rightComp != null) {
+                rightContent = rightComp.getContent();
+            }
+
+            diffContainer.add(new SimpleDiffPanel(leftContent, rightContent), BorderLayout.CENTER);
         }
-        if (rightComp != null) {
-            rightContent = rightComp.getContent();
-        }
 
-        diffContainer.add(new SimpleDiffPanel(leftContent, rightContent), BorderLayout.CENTER);
         diffContainer.revalidate();
         diffContainer.repaint();
     }

@@ -91,11 +91,13 @@ public class ComponentTreePanel extends JPanel {
 
         tree.addTreeSelectionListener(e -> {
             DefaultMutableTreeNode node = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
-            if (node != null && node.getUserObject() instanceof ComponentNodeData) {
-                ComponentNodeData data = (ComponentNodeData) node.getUserObject();
-                if (listener != null) {
-                    listener.componentSelected(data.key);
-                }
+            if (node == null || listener == null) {
+                return;
+            }
+            if (node.getUserObject() instanceof ComponentNodeData) {
+                listener.componentSelected(((ComponentNodeData) node.getUserObject()).key);
+            } else {
+                listener.componentSelected(null);
             }
         });
 
