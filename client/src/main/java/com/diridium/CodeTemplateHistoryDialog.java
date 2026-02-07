@@ -18,18 +18,21 @@ package com.diridium;
 */
 
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -38,20 +41,14 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-
-import javax.swing.AbstractAction;
-import javax.swing.JComponent;
-import javax.swing.KeyStroke;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.mirth.connect.client.ui.PlatformUI;
-import com.mirth.connect.model.codetemplates.CodeTemplate;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
 
 /**
@@ -60,12 +57,12 @@ import com.mirth.connect.model.converters.ObjectXMLSerializer;
  * @author Kiran Ayyagari (kayyagari@apache.org)
  */
 public class CodeTemplateHistoryDialog extends JDialog {
+    private static final Logger log = LoggerFactory.getLogger(CodeTemplateHistoryDialog.class);
 
     private String codeTemplateId;
     private String codeTemplateName;
     private RevisionInfoTable tblRevisions;
     private ChannelHistoryServletInterface servlet;
-    private ObjectXMLSerializer serializer;
     private JButton btnShowDiff;
     private JButton btnRevert;
     private JButton btnClose;
@@ -76,8 +73,7 @@ public class CodeTemplateHistoryDialog extends JDialog {
         super(parent, "Version History - " + codeTemplateName, true);
         this.codeTemplateId = codeTemplateId;
         this.codeTemplateName = codeTemplateName;
-        this.serializer = ObjectXMLSerializer.getInstance();
-        this.serializer.allowTypes(Collections.EMPTY_LIST, Arrays.asList(RevisionInfo.class.getPackage().getName() + ".**"), Collections.EMPTY_LIST);
+        ObjectXMLSerializer.getInstance().allowTypes(Collections.emptyList(), Arrays.asList(RevisionInfo.class.getPackage().getName() + ".**"), Collections.emptyList());
 
         initComponents();
         loadHistory();
@@ -236,21 +232,20 @@ public class CodeTemplateHistoryDialog extends JDialog {
         }
 
         RevisionInfoTableModel model = (RevisionInfoTableModel) tblRevisions.getModel();
-        RevisionInfo ri1 = model.getRevisionAt(rows[0]);
-        RevisionInfo ri2 = model.getRevisionAt(rows[1]);
+        // rows[0] = newer (lower row index, table is newest-first), rows[1] = older
+        // Assign left = older, right = newer to match standard diff convention
+        RevisionInfo older = model.getRevisionAt(rows[1]);
+        RevisionInfo newer = model.getRevisionAt(rows[0]);
 
         try {
-            String left = servlet.getCodeTemplateContent(codeTemplateId, ri1.getHash());
-            CodeTemplate leftCt = serializer.deserialize(left, CodeTemplate.class);
-
-            String right = servlet.getCodeTemplateContent(codeTemplateId, ri2.getHash());
-            CodeTemplate rightCt = serializer.deserialize(right, CodeTemplate.class);
+            String left = servlet.getCodeTemplateContent(codeTemplateId, older.getHash());
+            String right = servlet.getCodeTemplateContent(codeTemplateId, newer.getHash());
 
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-            String leftLabel = String.format("Revision: %s (user: %s, time: %s)", ri1.getShortHash(), ri1.getCommitterName(), sdf.format(new Date(ri1.getTime())));
-            String rightLabel = String.format("Revision: %s (user: %s, time: %s)", ri2.getShortHash(), ri2.getCommitterName(), sdf.format(new Date(ri2.getTime())));
+            String leftLabel = String.format("Old - %s (user: %s, time: %s)", older.getShortHash(), older.getCommitterName(), sdf.format(new Date(older.getTime())));
+            String rightLabel = String.format("New - %s (user: %s, time: %s)", newer.getShortHash(), newer.getCommitterName(), sdf.format(new Date(newer.getTime())));
 
-            DiffWindow dw = DiffWindow.create(this, "Code Template Diff - " + codeTemplateName, leftLabel, rightLabel, leftCt, rightCt, left, right);
+            DiffWindow dw = DiffWindow.create(this, "Code Template Diff - " + codeTemplateName, leftLabel, rightLabel, left, right);
             dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
             dw.setVisible(true);
         } catch (Exception e) {

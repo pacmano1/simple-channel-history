@@ -17,7 +17,10 @@ package com.diridium;
    limitations under the License.
 */
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Dialog;
+import java.awt.Font;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 
@@ -55,15 +58,14 @@ public class DiffWindow extends JDialog {
     }
 
     public static DiffWindow create(Dialog parent, String title, String leftLabel, String rightLabel,
-            Object leftObj, Object rightObj, String leftStrContent, String rightStrContent) {
+            String leftStrContent, String rightStrContent) {
         DiffWindow dd = new DiffWindow(parent, title, leftLabel, rightLabel);
         dd.buildContent(leftStrContent, rightStrContent);
         return dd;
     }
 
-    // Keep old signature for backwards compatibility (non-modal)
     public static DiffWindow create(String title, String leftLabel, String rightLabel,
-            Object leftObj, Object rightObj, String leftStrContent, String rightStrContent) {
+            String leftStrContent, String rightStrContent) {
         DiffWindow dd = new DiffWindow(null, title, leftLabel, rightLabel);
         dd.buildContent(leftStrContent, rightStrContent);
         return dd;

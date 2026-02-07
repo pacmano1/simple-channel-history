@@ -34,8 +34,6 @@ public class CodeTemplateVersionController implements CodeTemplateServerPlugin {
 
     private DatabaseHistoryRepository repo;
 
-    private VersionControllerUtil vcUtil;
-
     @Override
     public String getPluginPointName() {
         return ChannelHistoryServletInterface.PLUGIN_NAME;
@@ -44,7 +42,6 @@ public class CodeTemplateVersionController implements CodeTemplateServerPlugin {
     @Override
     public void start() {
         log.info("starting simple-channel-history CodeTemplate version controller");
-        vcUtil = new VersionControllerUtil();
         ObjectXMLSerializer serializer = ObjectXMLSerializer.getInstance();
         DatabaseHistoryRepository.init(serializer);
         repo = DatabaseHistoryRepository.getInstance();
@@ -66,7 +63,7 @@ public class CodeTemplateVersionController implements CodeTemplateServerPlugin {
 
     @Override
     public void save(CodeTemplate ct, ServerEventContext sec) {
-        repo.saveCodeTemplateHistory(ct, vcUtil.getUserId(sec));
+        repo.saveCodeTemplateHistory(ct, sec.getUserId());
     }
 
     @Override

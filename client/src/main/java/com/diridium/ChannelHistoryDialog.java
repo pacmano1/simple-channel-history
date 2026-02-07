@@ -19,14 +19,21 @@ package com.diridium;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
+import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -35,21 +42,14 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-
-import javax.swing.AbstractAction;
-import javax.swing.JComponent;
-import javax.swing.KeyStroke;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.mirth.connect.client.ui.PlatformUI;
-import com.mirth.connect.model.Channel;
-import com.mirth.connect.model.InvalidChannel;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
 
 /**
@@ -58,12 +58,12 @@ import com.mirth.connect.model.converters.ObjectXMLSerializer;
  * @author Kiran Ayyagari (kayyagari@apache.org)
  */
 public class ChannelHistoryDialog extends JDialog {
+    private static final Logger log = LoggerFactory.getLogger(ChannelHistoryDialog.class);
 
     private String channelId;
     private String channelName;
     private RevisionInfoTable tblRevisions;
     private ChannelHistoryServletInterface servlet;
-    private ObjectXMLSerializer serializer;
     private JButton btnShowDiff;
     private JButton btnRevert;
     private JButton btnClose;
@@ -74,8 +74,7 @@ public class ChannelHistoryDialog extends JDialog {
         super(parent, "Version History - " + channelName, true);
         this.channelId = channelId;
         this.channelName = channelName;
-        this.serializer = ObjectXMLSerializer.getInstance();
-        this.serializer.allowTypes(Collections.EMPTY_LIST, Arrays.asList(RevisionInfo.class.getPackage().getName() + ".**"), Collections.EMPTY_LIST);
+        ObjectXMLSerializer.getInstance().allowTypes(Collections.emptyList(), Arrays.asList(RevisionInfo.class.getPackage().getName() + ".**"), Collections.emptyList());
 
         initComponents();
         loadHistory();
@@ -234,23 +233,33 @@ public class ChannelHistoryDialog extends JDialog {
         }
 
         RevisionInfoTableModel model = (RevisionInfoTableModel) tblRevisions.getModel();
-        RevisionInfo ri1 = model.getRevisionAt(rows[0]);
-        RevisionInfo ri2 = model.getRevisionAt(rows[1]);
+        // rows[0] = newer (lower row index, table is newest-first), rows[1] = older
+        // Assign left = older, right = newer to match standard diff convention
+        RevisionInfo older = model.getRevisionAt(rows[1]);
+        RevisionInfo newer = model.getRevisionAt(rows[0]);
 
         try {
-            String left = servlet.getContent(channelId, ri1.getHash());
-            Channel leftCh = parseChannel(left, ri1.getShortHash());
-
-            String right = servlet.getContent(channelId, ri2.getHash());
-            Channel rightCh = parseChannel(right, ri2.getShortHash());
+            String left = servlet.getContent(channelId, older.getHash());
+            String right = servlet.getContent(channelId, newer.getHash());
 
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-            String leftLabel = String.format("Revision: %s (user: %s, time: %s)", ri1.getShortHash(), ri1.getCommitterName(), sdf.format(new Date(ri1.getTime())));
-            String rightLabel = String.format("Revision: %s (user: %s, time: %s)", ri2.getShortHash(), ri2.getCommitterName(), sdf.format(new Date(ri2.getTime())));
+            String leftLabel = String.format("Old - %s (user: %s, time: %s)", older.getShortHash(), older.getCommitterName(), sdf.format(new Date(older.getTime())));
+            String rightLabel = String.format("New - %s (user: %s, time: %s)", newer.getShortHash(), newer.getCommitterName(), sdf.format(new Date(newer.getTime())));
 
-            DiffWindow dw = DiffWindow.create(this, "Channel Diff - " + channelName, leftLabel, rightLabel, leftCh, rightCh, left, right);
-            dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
-            dw.setVisible(true);
+            try {
+                Map<String, DecomposedComponent> leftComponents = ChannelXmlDecomposer.decompose(left);
+                Map<String, DecomposedComponent> rightComponents = ChannelXmlDecomposer.decompose(right);
+                DecomposedDiffWindow dw = DecomposedDiffWindow.create(this, "Channel Diff - " + channelName,
+                        leftLabel, rightLabel, leftComponents, rightComponents, left, right);
+                dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
+                dw.setVisible(true);
+            } catch (Exception decompositionEx) {
+                // Fallback to original monolithic DiffWindow — log so failures aren't invisible
+                log.warn("Channel decomposition failed, falling back to raw diff: {}", decompositionEx.getMessage(), decompositionEx);
+                DiffWindow dw = DiffWindow.create(this, "Channel Diff - " + channelName, leftLabel, rightLabel, left, right);
+                dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
+                dw.setVisible(true);
+            }
         } catch (Exception e) {
             PlatformUI.MIRTH_FRAME.alertThrowable(PlatformUI.MIRTH_FRAME, e);
         }
@@ -273,14 +282,6 @@ public class ChannelHistoryDialog extends JDialog {
 
         // Restore selection to just the originally clicked row
         tblRevisions.setRowSelectionInterval(row, row);
-    }
-
-    private Channel parseChannel(String xml, String rev) {
-        Channel ch = serializer.deserialize(xml, Channel.class);
-        if (ch instanceof InvalidChannel) {
-            throw new IllegalStateException("Could not parse channel at revision " + rev);
-        }
-        return ch;
     }
 
     private void revertToSelected() {
