@@ -184,8 +184,8 @@ public class SimpleDiffPanel extends JPanel {
     }
 
     private void displayDiff(String leftContent, String rightContent) {
-        List<String> leftLines = leftContent.isEmpty() ? List.of() : Arrays.asList(leftContent.split("\n", -1));
-        List<String> rightLines = rightContent.isEmpty() ? List.of() : Arrays.asList(rightContent.split("\n", -1));
+        List<String> leftLines = leftContent.isEmpty() ? List.of() : Arrays.asList(leftContent.split("\\r?\\n", -1));
+        List<String> rightLines = rightContent.isEmpty() ? List.of() : Arrays.asList(rightContent.split("\\r?\\n", -1));
 
         Patch<String> patch = DiffUtils.diff(leftLines, rightLines);
 
