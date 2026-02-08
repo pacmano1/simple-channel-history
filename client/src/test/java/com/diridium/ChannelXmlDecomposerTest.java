@@ -60,16 +60,15 @@ public class ChannelXmlDecomposerTest {
         assertNotNull(components.get("Destination: Destination 1 [1]/Configuration"));
         assertNotNull(components.get("Destination: Destination 2 [2]/Configuration"));
 
-        // All filter/transformer/responseTransformer have empty <elements/> in version 1,
-        // so no step components are extracted — no Filter/Transformer/Response Transformer sub-groups
-        assertNull(components.get("Source Connector/Filter"));
-        assertNull(components.get("Source Connector/Transformer"));
-        assertNull(components.get("Destination: Destination 1 [1]/Filter"));
-        assertNull(components.get("Destination: Destination 1 [1]/Transformer"));
-        assertNull(components.get("Destination: Destination 1 [1]/Response Transformer"));
-        assertNull(components.get("Destination: Destination 2 [2]/Filter"));
-        assertNull(components.get("Destination: Destination 2 [2]/Transformer"));
-        assertNull(components.get("Destination: Destination 2 [2]/Response Transformer"));
+        // Filter/transformer/responseTransformer are extracted as whole blocks
+        assertNotNull(components.get("Source Connector/Filter"));
+        assertNotNull(components.get("Source Connector/Transformer"));
+        assertNotNull(components.get("Destination: Destination 1 [1]/Filter"));
+        assertNotNull(components.get("Destination: Destination 1 [1]/Transformer"));
+        assertNotNull(components.get("Destination: Destination 1 [1]/Response Transformer"));
+        assertNotNull(components.get("Destination: Destination 2 [2]/Filter"));
+        assertNotNull(components.get("Destination: Destination 2 [2]/Transformer"));
+        assertNotNull(components.get("Destination: Destination 2 [2]/Response Transformer"));
 
         // Channel Properties remainder
         assertNotNull(components.get("Channel Properties"));
@@ -87,12 +86,12 @@ public class ChannelXmlDecomposerTest {
         // Destination 1 still has JavaScript Writer script
         assertNotNull(components.get("Destination: Destination 1 [1]/Script"));
 
-        // Version 2 Destination 2 has a JavaScriptStep transformer — extracted as Step 0
-        String stepKey = "Destination: Destination 2 [2]/Transformer/Step 0";
-        assertNotNull(components.get(stepKey));
-        String stepContent = components.get(stepKey).getContent();
-        assertTrue(stepContent.contains("JavaScriptStep"));
-        assertTrue(stepContent.contains("dummy transformer"));
+        // Version 2 Destination 2 has a transformer with a JavaScriptStep
+        String transformerKey = "Destination: Destination 2 [2]/Transformer";
+        assertNotNull(components.get(transformerKey));
+        String transformerContent = components.get(transformerKey).getContent();
+        assertTrue(transformerContent.contains("JavaScriptStep"));
+        assertTrue(transformerContent.contains("dummy transformer"));
 
         // Channel Properties
         assertNotNull(components.get("Channel Properties"));
@@ -116,10 +115,11 @@ public class ChannelXmlDecomposerTest {
                 comp1.get("Channel Scripts/Preprocessing Script").getContent(),
                 comp2.get("Channel Scripts/Preprocessing Script").getContent());
 
-        // Destination 2 transformer: version 1 has no steps, version 2 has Step 0 (RIGHT_ONLY)
-        String stepKey = "Destination: Destination 2 [2]/Transformer/Step 0";
-        assertNull(comp1.get(stepKey));
-        assertNotNull(comp2.get(stepKey));
+        // Destination 2 transformer: both versions have it, but content differs (version 2 has a JavaScriptStep)
+        String transformerKey = "Destination: Destination 2 [2]/Transformer";
+        assertNotNull(comp1.get(transformerKey));
+        assertNotNull(comp2.get(transformerKey));
+        assertNotEquals(comp1.get(transformerKey).getContent(), comp2.get(transformerKey).getContent());
 
         // Destination 2 config changed (HTTP Sender -> TCP Sender)
         assertNotEquals(
@@ -143,9 +143,9 @@ public class ChannelXmlDecomposerTest {
         assertEquals(DecomposedComponent.Category.CHANNEL_PROPERTIES,
                 components.get("Channel Properties").getCategory());
 
-        // Step inherits its parent type's category
+        // Transformer block has TRANSFORMER category
         assertEquals(DecomposedComponent.Category.TRANSFORMER,
-                components.get("Destination: Destination 2 [2]/Transformer/Step 0").getCategory());
+                components.get("Destination: Destination 2 [2]/Transformer").getCategory());
     }
 
     @Test
@@ -158,9 +158,9 @@ public class ChannelXmlDecomposerTest {
         assertEquals("Destination: Destination 1 [1]",
                 components.get("Destination: Destination 1 [1]/Script").getParentGroup());
 
-        // Step's parent group is the sub-group (connector/elementType)
-        assertEquals("Destination: Destination 2 [2]/Transformer",
-                components.get("Destination: Destination 2 [2]/Transformer/Step 0").getParentGroup());
+        // Transformer's parent group is the connector
+        assertEquals("Destination: Destination 2 [2]",
+                components.get("Destination: Destination 2 [2]/Transformer").getParentGroup());
     }
 
     @Test
@@ -184,18 +184,17 @@ public class ChannelXmlDecomposerTest {
         String xml = loadResource("channel-for-diffing-version2.xml");
         Map<String, DecomposedComponent> components = ChannelXmlDecomposer.decompose(xml);
 
-        // Destination 2 config should not contain the JavaScriptStep (it was extracted)
+        // Destination 2 config should not contain transformer or filter (they were extracted)
         String dest2Config = components.get("Destination: Destination 2 [2]/Configuration").getContent();
+        assertFalse(dest2Config.contains("<transformer"));
+        assertFalse(dest2Config.contains("<filter"));
         assertFalse(dest2Config.contains("JavaScriptStep"));
         assertFalse(dest2Config.contains("dummy transformer"));
 
-        // The transformer element itself (with data types) should remain in config
-        assertTrue(dest2Config.contains("<transformer"));
-
-        // Source config should still have filter/transformer shells (empty elements)
+        // Source config should not contain filter/transformer (they were extracted)
         String srcConfig = components.get("Source Connector/Configuration").getContent();
-        assertTrue(srcConfig.contains("<filter"));
-        assertTrue(srcConfig.contains("<transformer"));
+        assertFalse(srcConfig.contains("<filter"));
+        assertFalse(srcConfig.contains("<transformer"));
     }
 
     @Test
@@ -227,27 +226,27 @@ public class ChannelXmlDecomposerTest {
     }
 
     @Test
-    public void testStepExtraction() throws Exception {
+    public void testTransformerExtraction() throws Exception {
         String xml = loadResource("channel-for-diffing-version2.xml");
         Map<String, DecomposedComponent> components = ChannelXmlDecomposer.decompose(xml);
 
-        // Destination 2 has one JavaScriptStep in its transformer
-        String stepKey = "Destination: Destination 2 [2]/Transformer/Step 0";
-        DecomposedComponent step = components.get(stepKey);
-        assertNotNull(step);
+        // Destination 2 transformer extracted as a whole block
+        String transformerKey = "Destination: Destination 2 [2]/Transformer";
+        DecomposedComponent transformer = components.get(transformerKey);
+        assertNotNull(transformer);
 
-        // Display name includes sequence and type
-        assertEquals("Step 0: JavaScriptStep", step.getDisplayName());
+        // Display name is the element type
+        assertEquals("Transformer", transformer.getDisplayName());
 
         // Category is TRANSFORMER
-        assertEquals(DecomposedComponent.Category.TRANSFORMER, step.getCategory());
+        assertEquals(DecomposedComponent.Category.TRANSFORMER, transformer.getCategory());
 
-        // Parent group is the sub-group
-        assertEquals("Destination: Destination 2 [2]/Transformer", step.getParentGroup());
+        // Parent group is the connector
+        assertEquals("Destination: Destination 2 [2]", transformer.getParentGroup());
 
-        // Content is the serialized step XML
-        assertTrue(step.getContent().contains("<sequenceNumber>0</sequenceNumber>"));
-        assertTrue(step.getContent().contains("dummy transformer"));
+        // Content contains the full transformer block including the step
+        assertTrue(transformer.getContent().contains("<sequenceNumber>0</sequenceNumber>"));
+        assertTrue(transformer.getContent().contains("dummy transformer"));
     }
 
     @Test

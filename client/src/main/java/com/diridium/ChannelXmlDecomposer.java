@@ -25,11 +25,12 @@ import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+
+import com.mirth.connect.util.MirthXmlUtil;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
@@ -68,9 +69,9 @@ public class ChannelXmlDecomposer {
             String srcGroup = "Source Connector";
             extractConnectorScript(xpath, components, (Element) sourceConnector, srcGroup);
             extractPluginProperties(xpath, components, (Element) sourceConnector, srcGroup);
-            extractStepsFromSubElement(xpath, components, (Element) sourceConnector, srcGroup,
+            extractSubElement(xpath, components, (Element) sourceConnector, srcGroup,
                     "filter", "Filter", DecomposedComponent.Category.FILTER);
-            extractStepsFromSubElement(xpath, components, (Element) sourceConnector, srcGroup,
+            extractSubElement(xpath, components, (Element) sourceConnector, srcGroup,
                     "transformer", "Transformer", DecomposedComponent.Category.TRANSFORMER);
 
             // Serialize remaining source connector as Configuration
@@ -96,11 +97,11 @@ public class ChannelXmlDecomposer {
 
             extractConnectorScript(xpath, components, connector, groupName);
             extractPluginProperties(xpath, components, connector, groupName);
-            extractStepsFromSubElement(xpath, components, connector, groupName,
+            extractSubElement(xpath, components, connector, groupName,
                     "filter", "Filter", DecomposedComponent.Category.FILTER);
-            extractStepsFromSubElement(xpath, components, connector, groupName,
+            extractSubElement(xpath, components, connector, groupName,
                     "transformer", "Transformer", DecomposedComponent.Category.TRANSFORMER);
-            extractStepsFromSubElement(xpath, components, connector, groupName,
+            extractSubElement(xpath, components, connector, groupName,
                     "responseTransformer", "Response Transformer", DecomposedComponent.Category.RESPONSE_TRANSFORMER);
         }
 
@@ -189,7 +190,7 @@ public class ChannelXmlDecomposer {
         }
     }
 
-    private static void extractStepsFromSubElement(XPath xpath,
+    private static void extractSubElement(XPath xpath,
             Map<String, DecomposedComponent> components,
             Element connector, String connectorGroup,
             String elementName, String displayName,
@@ -199,50 +200,11 @@ public class ChannelXmlDecomposer {
             return;
         }
 
-        Element subElement = (Element) node;
-        Node elementsNode = (Node) xpath.evaluate("elements", subElement, XPathConstants.NODE);
-        if (elementsNode == null) {
-            return;
-        }
-
-        // Collect step elements (direct children of <elements>)
-        List<Element> steps = new ArrayList<>();
-        NodeList children = elementsNode.getChildNodes();
-        for (int i = 0; i < children.getLength(); i++) {
-            if (children.item(i) instanceof Element) {
-                steps.add((Element) children.item(i));
-            }
-        }
-
-        if (steps.isEmpty()) {
-            return;
-        }
-
-        String subGroupKey = connectorGroup + "/" + displayName;
-
-        for (int i = 0; i < steps.size(); i++) {
-            Element step = steps.get(i);
-
-            // Read sequence number, fallback to index
-            String seqText = getDirectChildText(step, "sequenceNumber");
-            String seq = (seqText != null) ? seqText : String.valueOf(i);
-
-            // Read step name, fallback to type name from tag
-            String stepName = getDirectChildText(step, "name");
-            if (stepName == null || stepName.isEmpty()) {
-                stepName = getStepTypeName(step.getTagName());
-            }
-
-            String stepDisplayName = "Step " + seq + ": " + stepName;
-            String stepKey = subGroupKey + "/Step " + seq;
-
-            String stepContent = serializeNode(step);
-            components.put(stepKey, new DecomposedComponent(stepKey, stepDisplayName, stepContent,
-                    category, subGroupKey));
-
-            // Remove the step from the DOM
-            elementsNode.removeChild(step);
-        }
+        String compKey = connectorGroup + "/" + displayName;
+        String content = serializeNode(node);
+        components.put(compKey, new DecomposedComponent(compKey, displayName, content,
+                category, connectorGroup));
+        connector.removeChild(node);
     }
 
     static String getStepTypeName(String tagName) {
@@ -270,13 +232,10 @@ public class ChannelXmlDecomposer {
         tf.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_DTD, "");
         tf.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
         Transformer transformer = tf.newTransformer();
-        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
-        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+        transformer.setOutputProperty(javax.xml.transform.OutputKeys.OMIT_XML_DECLARATION, "yes");
         StringWriter writer = new StringWriter();
         transformer.transform(new DOMSource(node), new StreamResult(writer));
-        // Remove blank lines left behind by removed DOM nodes
-        return writer.toString().trim().replaceAll("(?m)^\\s*$\\n", "");
+        return MirthXmlUtil.prettyPrint(writer.toString().trim()).trim();
     }
 
     private static String serializeDocument(Document doc) throws Exception {
