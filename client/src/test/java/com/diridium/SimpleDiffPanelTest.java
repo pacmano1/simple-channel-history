@@ -148,11 +148,21 @@ public class SimpleDiffPanelTest {
         // This ensures entirely new/removed components get INSERT/DELETE deltas (green/red)
         // instead of CHANGE deltas (blue/yellow)
         String empty = "";
-        List<String> lines = empty.isEmpty() ? List.of() : java.util.Arrays.asList(empty.split("\n", -1));
+        List<String> lines = empty.isEmpty() ? List.of() : java.util.Arrays.asList(empty.split("\\r?\\n", -1));
         assertTrue("Empty content should produce empty list", lines.isEmpty());
 
         String nonEmpty = "line1\nline2";
-        List<String> nonEmptyLines = nonEmpty.isEmpty() ? List.of() : java.util.Arrays.asList(nonEmpty.split("\n", -1));
+        List<String> nonEmptyLines = nonEmpty.isEmpty() ? List.of() : java.util.Arrays.asList(nonEmpty.split("\\r?\\n", -1));
         assertEquals(2, nonEmptyLines.size());
+    }
+
+    @Test
+    public void testCrlfContentSplitsCorrectly() {
+        String crlf = "line1\r\nline2\r\nline3";
+        List<String> lines = crlf.isEmpty() ? List.of() : java.util.Arrays.asList(crlf.split("\\r?\\n", -1));
+        assertEquals(3, lines.size());
+        assertEquals("line1", lines.get(0));
+        assertEquals("line2", lines.get(1));
+        assertEquals("line3", lines.get(2));
     }
 }
