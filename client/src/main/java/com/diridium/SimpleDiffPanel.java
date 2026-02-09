@@ -6,6 +6,7 @@ package com.diridium;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -122,10 +123,16 @@ public class SimpleDiffPanel extends JPanel {
 
         @Override
         public boolean getScrollableTracksViewportWidth() {
-            if (getParent() == null || getUI() == null) {
-                return false;
+            return false;
+        }
+
+        @Override
+        public void setBounds(int x, int y, int width, int height) {
+            Container parent = getParent();
+            if (parent instanceof javax.swing.JViewport) {
+                width = Math.max(width, parent.getWidth());
             }
-            return getUI().getPreferredSize(this).width <= getParent().getSize().width;
+            super.setBounds(x, y, width, height);
         }
 
         @Override
