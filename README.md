@@ -83,6 +83,6 @@ The plugin will create the necessary database tables on first startup.
 
 ## License
 
-Apache License 2.0
+Mozilla Public License 2.0 (MPL-2.0)
 
-Based on the original git-ext plugin by Kiran Ayyagari.
+Based on the original [git-ext](https://github.com/kayyagari/git-ext) plugin by Kiran Ayyagari.
