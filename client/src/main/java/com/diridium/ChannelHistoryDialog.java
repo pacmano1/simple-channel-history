@@ -1,21 +1,8 @@
+// SPDX-FileCopyrightText: Copyright 2024 Kiran Ayyagari
+// SPDX-FileCopyrightText: Copyright 2025-2026 Diridium Technologies Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package com.diridium;
-
-/*
-   Copyright [2024] [Kiran Ayyagari]
-   Copyright [2025-2026] [Diridium Technologies Inc.]
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -247,10 +234,10 @@ public class ChannelHistoryDialog extends JDialog {
             String rightLabel = String.format("New - %s (user: %s, time: %s)", newer.getShortHash(), newer.getCommitterName(), sdf.format(new Date(newer.getTime())));
 
             try {
-                Map<String, DecomposedComponent> leftComponents = ChannelXmlDecomposer.decompose(left);
-                Map<String, DecomposedComponent> rightComponents = ChannelXmlDecomposer.decompose(right);
+                ChannelXmlDecomposer.DecomposeResult leftResult = ChannelXmlDecomposer.decomposeWithNames(left);
+                ChannelXmlDecomposer.DecomposeResult rightResult = ChannelXmlDecomposer.decomposeWithNames(right);
                 DecomposedDiffWindow dw = DecomposedDiffWindow.create(this, "Channel Diff - " + channelName,
-                        leftLabel, rightLabel, leftComponents, rightComponents, left, right);
+                        leftLabel, rightLabel, leftResult, rightResult, left, right);
                 dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
                 dw.setVisible(true);
             } catch (Exception decompositionEx) {

@@ -1,20 +1,7 @@
+// SPDX-FileCopyrightText: Copyright 2025-2026 Diridium Technologies Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package com.diridium;
-
-/*
-   Copyright [2025-2026] [Diridium Technologies Inc.]
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -24,6 +11,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -67,7 +55,9 @@ public class ComponentTreePanel extends JPanel {
 
     private final Map<String, DecomposedComponent> leftComponents;
     private final Map<String, DecomposedComponent> rightComponents;
+    private final Map<String, String> groupDisplayNames;
     private final Map<String, ChangeType> changeTypes;
+    private final Set<String> reorderedSubGroups;
     private final Set<String> allKeys;
     private JTree tree;
     private JCheckBox showChangedOnlyCheckBox;
@@ -76,9 +66,25 @@ public class ComponentTreePanel extends JPanel {
 
     public ComponentTreePanel(Map<String, DecomposedComponent> leftComponents,
                               Map<String, DecomposedComponent> rightComponents) {
+        this(leftComponents, rightComponents, null, null);
+    }
+
+    public ComponentTreePanel(Map<String, DecomposedComponent> leftComponents,
+                              Map<String, DecomposedComponent> rightComponents,
+                              Map<String, String> leftGroupDisplayNames,
+                              Map<String, String> rightGroupDisplayNames) {
         this.leftComponents = leftComponents;
         this.rightComponents = rightComponents;
+        // Merge display names: right (newer) takes precedence
+        this.groupDisplayNames = new LinkedHashMap<>();
+        if (leftGroupDisplayNames != null) {
+            this.groupDisplayNames.putAll(leftGroupDisplayNames);
+        }
+        if (rightGroupDisplayNames != null) {
+            this.groupDisplayNames.putAll(rightGroupDisplayNames);
+        }
         this.changeTypes = computeChangeTypes();
+        this.reorderedSubGroups = computeReorderedSubGroups();
         this.allKeys = computeAllKeys();
 
         setLayout(new BorderLayout());
@@ -160,6 +166,62 @@ public class ComponentTreePanel extends JPanel {
         return all;
     }
 
+    private static final java.util.regex.Pattern POSITIONAL_FIELDS_PATTERN =
+            java.util.regex.Pattern.compile(
+                    "<sequenceNumber>\\d+</sequenceNumber>|<operator>[^<]*</operator>");
+
+    /**
+     * Detect sub-groups where all steps exist in both versions with the same content
+     * but in a different order (pure reorder). Strips sequenceNumber from content
+     * before comparing since it's purely positional and always changes on reorder.
+     */
+    private Set<String> computeReorderedSubGroups() {
+        Set<String> result = new LinkedHashSet<>();
+
+        // Find all sub-group parent keys (keys containing "/" that are used as parentGroup)
+        Map<String, List<String>> leftSubGroups = new LinkedHashMap<>();
+        Map<String, List<String>> rightSubGroups = new LinkedHashMap<>();
+
+        for (DecomposedComponent comp : leftComponents.values()) {
+            String pg = comp.getParentGroup();
+            if (pg.contains("/")) {
+                leftSubGroups.computeIfAbsent(pg, k -> new ArrayList<>())
+                        .add(stripPositionalFields(comp.getContent()));
+            }
+        }
+        for (DecomposedComponent comp : rightComponents.values()) {
+            String pg = comp.getParentGroup();
+            if (pg.contains("/")) {
+                rightSubGroups.computeIfAbsent(pg, k -> new ArrayList<>())
+                        .add(stripPositionalFields(comp.getContent()));
+            }
+        }
+
+        for (String subGroup : leftSubGroups.keySet()) {
+            List<String> leftContents = leftSubGroups.get(subGroup);
+            List<String> rightContents = rightSubGroups.get(subGroup);
+            if (rightContents == null || leftContents.size() != rightContents.size()) {
+                continue;
+            }
+            if (leftContents.equals(rightContents)) {
+                continue;
+            }
+            List<String> leftSorted = new ArrayList<>(leftContents);
+            List<String> rightSorted = new ArrayList<>(rightContents);
+            Collections.sort(leftSorted);
+            Collections.sort(rightSorted);
+            if (leftSorted.equals(rightSorted)) {
+                result.add(subGroup);
+            }
+        }
+        return result;
+    }
+
+    private static String stripPositionalFields(String content) {
+        String stripped = POSITIONAL_FIELDS_PATTERN.matcher(content).replaceAll("");
+        return stripped.replaceAll("\\s+", " ").trim();
+    }
+
     private ChangeType computeGroupChangeType(List<String> keys) {
         return computeGroupChangeType(changeTypes, keys);
     }
@@ -238,8 +300,9 @@ public class ComponentTreePanel extends JPanel {
                 continue;
             }
 
+            String groupDisplay = groupDisplayNames.getOrDefault(groupName, groupName);
             DefaultMutableTreeNode groupNode = new DefaultMutableTreeNode(
-                    new GroupNodeData(groupName, groupChangeType));
+                    new GroupNodeData(groupDisplay, groupChangeType));
 
             // Add direct children (components whose parentGroup is this top-level group)
             List<String> directKeys = groups.getOrDefault(groupName, List.of());
@@ -265,6 +328,9 @@ public class ComponentTreePanel extends JPanel {
 
                 // Display name is the suffix after the parent group name + "/"
                 String subDisplayName = subGroup.substring(groupName.length() + 1);
+                if (reorderedSubGroups.contains(subGroup)) {
+                    subDisplayName += " (steps reordered)";
+                }
                 DefaultMutableTreeNode subGroupNode = new DefaultMutableTreeNode(
                         new GroupNodeData(subDisplayName, subGroupChangeType));
 

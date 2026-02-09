@@ -1,20 +1,7 @@
+// SPDX-FileCopyrightText: Copyright 2025-2026 Diridium Technologies Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package com.diridium;
-
-/*
-   Copyright [2025-2026] [Diridium Technologies Inc.]
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 import static org.junit.Assert.*;
 
@@ -45,34 +32,40 @@ public class ChannelXmlDecomposerTest {
         assertNotNull(components.get("Channel Scripts/Undeploy Script"));
 
         // Destination 1 has a JavaScript Writer with a script
-        assertNotNull(components.get("Destination: Destination 1 [1]/Script"));
+        assertNotNull(components.get("Destination [1]/Script"));
         assertEquals("logger.info(\"destination one\");",
-                components.get("Destination: Destination 1 [1]/Script").getContent());
+                components.get("Destination [1]/Script").getContent());
 
         // Destination 2 (HTTP Sender) has no script element
-        assertNull(components.get("Destination: Destination 2 [2]/Script"));
+        assertNull(components.get("Destination [2]/Script"));
 
         // No source connector script (VmReceiverProperties has no <script>)
         assertNull(components.get("Source Connector/Script"));
 
         // Connector configurations
         assertNotNull(components.get("Source Connector/Configuration"));
-        assertNotNull(components.get("Destination: Destination 1 [1]/Configuration"));
-        assertNotNull(components.get("Destination: Destination 2 [2]/Configuration"));
+        assertNotNull(components.get("Destination [1]/Configuration"));
+        assertNotNull(components.get("Destination [2]/Configuration"));
 
         // All filter/transformer/responseTransformer have empty <elements/> in version 1,
         // so no step components are extracted — no Filter/Transformer/Response Transformer sub-groups
         assertNull(components.get("Source Connector/Filter"));
         assertNull(components.get("Source Connector/Transformer"));
-        assertNull(components.get("Destination: Destination 1 [1]/Filter"));
-        assertNull(components.get("Destination: Destination 1 [1]/Transformer"));
-        assertNull(components.get("Destination: Destination 1 [1]/Response Transformer"));
-        assertNull(components.get("Destination: Destination 2 [2]/Filter"));
-        assertNull(components.get("Destination: Destination 2 [2]/Transformer"));
-        assertNull(components.get("Destination: Destination 2 [2]/Response Transformer"));
+        assertNull(components.get("Destination [1]/Filter"));
+        assertNull(components.get("Destination [1]/Transformer"));
+        assertNull(components.get("Destination [1]/Response Transformer"));
+        assertNull(components.get("Destination [2]/Filter"));
+        assertNull(components.get("Destination [2]/Transformer"));
+        assertNull(components.get("Destination [2]/Response Transformer"));
 
         // Channel Properties remainder
         assertNotNull(components.get("Channel Properties"));
+
+        // Destination Order
+        DecomposedComponent destOrder = components.get("Destination Order");
+        assertNotNull(destOrder);
+        assertEquals("1. Destination 1 [1]\n2. Destination 2 [2]", destOrder.getContent());
+        assertEquals(DecomposedComponent.Category.CHANNEL_PROPERTIES, destOrder.getCategory());
     }
 
     @Test
@@ -85,10 +78,10 @@ public class ChannelXmlDecomposerTest {
         assertTrue(deployScript.contains("added to just check how diffing works"));
 
         // Destination 1 still has JavaScript Writer script
-        assertNotNull(components.get("Destination: Destination 1 [1]/Script"));
+        assertNotNull(components.get("Destination [1]/Script"));
 
         // Version 2 Destination 2 has a JavaScriptStep transformer — extracted as Step 0
-        String stepKey = "Destination: Destination 2 [2]/Transformer/Step 0";
+        String stepKey = "Destination [2]/Transformer/Step 0";
         assertNotNull(components.get(stepKey));
         String stepContent = components.get(stepKey).getContent();
         assertTrue(stepContent.contains("JavaScriptStep"));
@@ -117,14 +110,19 @@ public class ChannelXmlDecomposerTest {
                 comp2.get("Channel Scripts/Preprocessing Script").getContent());
 
         // Destination 2 transformer: version 1 has no steps, version 2 has Step 0 (RIGHT_ONLY)
-        String stepKey = "Destination: Destination 2 [2]/Transformer/Step 0";
+        String stepKey = "Destination [2]/Transformer/Step 0";
         assertNull(comp1.get(stepKey));
         assertNotNull(comp2.get(stepKey));
 
         // Destination 2 config changed (HTTP Sender -> TCP Sender)
         assertNotEquals(
-                comp1.get("Destination: Destination 2 [2]/Configuration").getContent(),
-                comp2.get("Destination: Destination 2 [2]/Configuration").getContent());
+                comp1.get("Destination [2]/Configuration").getContent(),
+                comp2.get("Destination [2]/Configuration").getContent());
+
+        // Destination Order should be the same (same destinations in same order)
+        assertEquals(
+                comp1.get("Destination Order").getContent(),
+                comp2.get("Destination Order").getContent());
     }
 
     @Test
@@ -137,15 +135,15 @@ public class ChannelXmlDecomposerTest {
         assertEquals(DecomposedComponent.Category.CONNECTOR_CONFIGURATION,
                 components.get("Source Connector/Configuration").getCategory());
         assertEquals(DecomposedComponent.Category.CONNECTOR_CONFIGURATION,
-                components.get("Destination: Destination 1 [1]/Configuration").getCategory());
+                components.get("Destination [1]/Configuration").getCategory());
         assertEquals(DecomposedComponent.Category.CONNECTOR_SCRIPT,
-                components.get("Destination: Destination 1 [1]/Script").getCategory());
+                components.get("Destination [1]/Script").getCategory());
         assertEquals(DecomposedComponent.Category.CHANNEL_PROPERTIES,
                 components.get("Channel Properties").getCategory());
 
         // Step inherits its parent type's category
         assertEquals(DecomposedComponent.Category.TRANSFORMER,
-                components.get("Destination: Destination 2 [2]/Transformer/Step 0").getCategory());
+                components.get("Destination [2]/Transformer/Step 0").getCategory());
     }
 
     @Test
@@ -155,12 +153,12 @@ public class ChannelXmlDecomposerTest {
 
         assertEquals("Channel Scripts",
                 components.get("Channel Scripts/Deploy Script").getParentGroup());
-        assertEquals("Destination: Destination 1 [1]",
-                components.get("Destination: Destination 1 [1]/Script").getParentGroup());
+        assertEquals("Destination [1]",
+                components.get("Destination [1]/Script").getParentGroup());
 
         // Step's parent group is the sub-group (connector/elementType)
-        assertEquals("Destination: Destination 2 [2]/Transformer",
-                components.get("Destination: Destination 2 [2]/Transformer/Step 0").getParentGroup());
+        assertEquals("Destination [2]/Transformer",
+                components.get("Destination [2]/Transformer/Step 0").getParentGroup());
     }
 
     @Test
@@ -185,7 +183,7 @@ public class ChannelXmlDecomposerTest {
         Map<String, DecomposedComponent> components = ChannelXmlDecomposer.decompose(xml);
 
         // Destination 2 config should not contain the JavaScriptStep (it was extracted)
-        String dest2Config = components.get("Destination: Destination 2 [2]/Configuration").getContent();
+        String dest2Config = components.get("Destination [2]/Configuration").getContent();
         assertFalse(dest2Config.contains("JavaScriptStep"));
         assertFalse(dest2Config.contains("dummy transformer"));
 
@@ -208,12 +206,12 @@ public class ChannelXmlDecomposerTest {
 
         // Destination 2 config changed between versions (HTTP Sender -> TCP Sender)
         assertNotEquals(
-                comp1.get("Destination: Destination 2 [2]/Configuration").getContent(),
-                comp2.get("Destination: Destination 2 [2]/Configuration").getContent());
+                comp1.get("Destination [2]/Configuration").getContent(),
+                comp2.get("Destination [2]/Configuration").getContent());
 
         // Both versions should have the destination configuration
-        assertNotNull(comp1.get("Destination: Destination 2 [2]/Configuration"));
-        assertNotNull(comp2.get("Destination: Destination 2 [2]/Configuration"));
+        assertNotNull(comp1.get("Destination [2]/Configuration"));
+        assertNotNull(comp2.get("Destination [2]/Configuration"));
     }
 
     @Test
@@ -232,7 +230,7 @@ public class ChannelXmlDecomposerTest {
         Map<String, DecomposedComponent> components = ChannelXmlDecomposer.decompose(xml);
 
         // Destination 2 has one JavaScriptStep in its transformer
-        String stepKey = "Destination: Destination 2 [2]/Transformer/Step 0";
+        String stepKey = "Destination [2]/Transformer/Step 0";
         DecomposedComponent step = components.get(stepKey);
         assertNotNull(step);
 
@@ -243,7 +241,7 @@ public class ChannelXmlDecomposerTest {
         assertEquals(DecomposedComponent.Category.TRANSFORMER, step.getCategory());
 
         // Parent group is the sub-group
-        assertEquals("Destination: Destination 2 [2]/Transformer", step.getParentGroup());
+        assertEquals("Destination [2]/Transformer", step.getParentGroup());
 
         // Content is the serialized step XML
         assertTrue(step.getContent().contains("<sequenceNumber>0</sequenceNumber>"));
@@ -297,12 +295,12 @@ public class ChannelXmlDecomposerTest {
         assertTrue(srcPlugin.getContent().contains("test-cert"));
 
         // Destination has two plugins
-        String destTlsKey = "Destination: Dest1 [1]/Plugin: TLSConnectorProperties";
+        String destTlsKey = "Destination [1]/Plugin: TLSConnectorProperties";
         DecomposedComponent destTls = components.get(destTlsKey);
         assertNotNull("Dest TLS plugin should be extracted", destTls);
         assertTrue(destTls.getContent().contains("isTlsManagerEnabled"));
 
-        String destOtherKey = "Destination: Dest1 [1]/Plugin: PluginProperties";
+        String destOtherKey = "Destination [1]/Plugin: PluginProperties";
         DecomposedComponent destOther = components.get(destOtherKey);
         assertNotNull("Dest second plugin should be extracted", destOther);
         assertTrue(destOther.getContent().contains("value"));
@@ -312,7 +310,7 @@ public class ChannelXmlDecomposerTest {
         assertFalse(srcConfig.contains("TLSConnectorProperties"));
         assertFalse(srcConfig.contains("test-cert"));
 
-        String destConfig = components.get("Destination: Dest1 [1]/Configuration").getContent();
+        String destConfig = components.get("Destination [1]/Configuration").getContent();
         assertFalse(destConfig.contains("TLSConnectorProperties"));
         assertFalse(destConfig.contains("PluginProperties"));
     }
@@ -338,5 +336,147 @@ public class ChannelXmlDecomposerTest {
                 ChannelXmlDecomposer.getStepTypeName("com.mirth.connect.plugins.mapper.MapperStep"));
         assertEquals("simpleTag",
                 ChannelXmlDecomposer.getStepTypeName("simpleTag"));
+    }
+
+    @Test
+    public void testDestinationOrderReorderDetection() throws Exception {
+        String xml1 = "<channel version=\"3.9.1\">"
+                + "<id>test-id</id><name>test</name><revision>1</revision>"
+                + "<sourceConnector version=\"3.9.1\">"
+                + "  <metaDataId>0</metaDataId><name>sourceConnector</name>"
+                + "  <properties class=\"com.mirth.connect.connectors.vm.VmReceiverProperties\"/>"
+                + "  <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "  <filter version=\"3.9.1\"><elements/></filter>"
+                + "</sourceConnector>"
+                + "<destinationConnectors>"
+                + "  <connector version=\"3.9.1\">"
+                + "    <metaDataId>1</metaDataId><name>Dest A</name>"
+                + "    <properties class=\"com.mirth.connect.connectors.vm.VmDispatcherProperties\"/>"
+                + "    <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "    <filter version=\"3.9.1\"><elements/></filter>"
+                + "  </connector>"
+                + "  <connector version=\"3.9.1\">"
+                + "    <metaDataId>2</metaDataId><name>Dest B</name>"
+                + "    <properties class=\"com.mirth.connect.connectors.vm.VmDispatcherProperties\"/>"
+                + "    <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "    <filter version=\"3.9.1\"><elements/></filter>"
+                + "  </connector>"
+                + "</destinationConnectors>"
+                + "</channel>";
+
+        // Same channel but destinations reordered
+        String xml2 = "<channel version=\"3.9.1\">"
+                + "<id>test-id</id><name>test</name><revision>1</revision>"
+                + "<sourceConnector version=\"3.9.1\">"
+                + "  <metaDataId>0</metaDataId><name>sourceConnector</name>"
+                + "  <properties class=\"com.mirth.connect.connectors.vm.VmReceiverProperties\"/>"
+                + "  <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "  <filter version=\"3.9.1\"><elements/></filter>"
+                + "</sourceConnector>"
+                + "<destinationConnectors>"
+                + "  <connector version=\"3.9.1\">"
+                + "    <metaDataId>2</metaDataId><name>Dest B</name>"
+                + "    <properties class=\"com.mirth.connect.connectors.vm.VmDispatcherProperties\"/>"
+                + "    <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "    <filter version=\"3.9.1\"><elements/></filter>"
+                + "  </connector>"
+                + "  <connector version=\"3.9.1\">"
+                + "    <metaDataId>1</metaDataId><name>Dest A</name>"
+                + "    <properties class=\"com.mirth.connect.connectors.vm.VmDispatcherProperties\"/>"
+                + "    <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "    <filter version=\"3.9.1\"><elements/></filter>"
+                + "  </connector>"
+                + "</destinationConnectors>"
+                + "</channel>";
+
+        Map<String, DecomposedComponent> comp1 = ChannelXmlDecomposer.decompose(xml1);
+        Map<String, DecomposedComponent> comp2 = ChannelXmlDecomposer.decompose(xml2);
+
+        // Destination Order should differ (destinations reordered)
+        assertNotEquals(
+                comp1.get("Destination Order").getContent(),
+                comp2.get("Destination Order").getContent());
+        assertEquals("1. Dest A [1]\n2. Dest B [2]",
+                comp1.get("Destination Order").getContent());
+        assertEquals("1. Dest B [2]\n2. Dest A [1]",
+                comp2.get("Destination Order").getContent());
+
+        // Individual destination components should still match (content unchanged)
+        assertEquals(
+                comp1.get("Destination [1]/Configuration").getContent(),
+                comp2.get("Destination [1]/Configuration").getContent());
+        assertEquals(
+                comp1.get("Destination [2]/Configuration").getContent(),
+                comp2.get("Destination [2]/Configuration").getContent());
+    }
+
+    @Test
+    public void testDestinationRenameMatchesByMetaDataId() throws Exception {
+        String xml1 = "<channel version=\"3.9.1\">"
+                + "<id>test-id</id><name>test</name><revision>1</revision>"
+                + "<sourceConnector version=\"3.9.1\">"
+                + "  <metaDataId>0</metaDataId><name>sourceConnector</name>"
+                + "  <properties class=\"com.mirth.connect.connectors.vm.VmReceiverProperties\"/>"
+                + "  <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "  <filter version=\"3.9.1\"><elements/></filter>"
+                + "</sourceConnector>"
+                + "<destinationConnectors>"
+                + "  <connector version=\"3.9.1\">"
+                + "    <metaDataId>1</metaDataId><name>Old Name</name>"
+                + "    <properties class=\"com.mirth.connect.connectors.vm.VmDispatcherProperties\"/>"
+                + "    <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "    <filter version=\"3.9.1\"><elements/></filter>"
+                + "  </connector>"
+                + "</destinationConnectors>"
+                + "</channel>";
+
+        // Same destination (metaDataId=1) but renamed
+        String xml2 = "<channel version=\"3.9.1\">"
+                + "<id>test-id</id><name>test</name><revision>1</revision>"
+                + "<sourceConnector version=\"3.9.1\">"
+                + "  <metaDataId>0</metaDataId><name>sourceConnector</name>"
+                + "  <properties class=\"com.mirth.connect.connectors.vm.VmReceiverProperties\"/>"
+                + "  <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "  <filter version=\"3.9.1\"><elements/></filter>"
+                + "</sourceConnector>"
+                + "<destinationConnectors>"
+                + "  <connector version=\"3.9.1\">"
+                + "    <metaDataId>1</metaDataId><name>New Name</name>"
+                + "    <properties class=\"com.mirth.connect.connectors.vm.VmDispatcherProperties\"/>"
+                + "    <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "    <filter version=\"3.9.1\"><elements/></filter>"
+                + "  </connector>"
+                + "</destinationConnectors>"
+                + "</channel>";
+
+        Map<String, DecomposedComponent> comp1 = ChannelXmlDecomposer.decompose(xml1);
+        Map<String, DecomposedComponent> comp2 = ChannelXmlDecomposer.decompose(xml2);
+
+        // Both versions key by metaDataId — Destination [1] exists in both
+        assertNotNull(comp1.get("Destination [1]/Configuration"));
+        assertNotNull(comp2.get("Destination [1]/Configuration"));
+
+        // Config differs because the <name> element changed
+        assertNotEquals(
+                comp1.get("Destination [1]/Configuration").getContent(),
+                comp2.get("Destination [1]/Configuration").getContent());
+
+        // Destination Order reflects the name change
+        assertEquals("1. Old Name [1]", comp1.get("Destination Order").getContent());
+        assertEquals("1. New Name [1]", comp2.get("Destination Order").getContent());
+    }
+
+    @Test
+    public void testDecomposeWithNamesReturnsDisplayNames() throws Exception {
+        String xml = loadResource("channel-for-diffing-version1.xml");
+        ChannelXmlDecomposer.DecomposeResult result = ChannelXmlDecomposer.decomposeWithNames(xml);
+
+        Map<String, String> displayNames = result.getGroupDisplayNames();
+        assertEquals("Destination: Destination 1 [1]", displayNames.get("Destination [1]"));
+        assertEquals("Destination: Destination 2 [2]", displayNames.get("Destination [2]"));
+
+        // Components use stable keys
+        assertNotNull(result.getComponents().get("Destination [1]/Script"));
+        assertNotNull(result.getComponents().get("Destination [2]/Configuration"));
     }
 }

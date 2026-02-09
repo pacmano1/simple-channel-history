@@ -1,20 +1,7 @@
+// SPDX-FileCopyrightText: Copyright 2025-2026 Diridium Technologies Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package com.diridium;
-
-/*
-   Copyright [2025-2026] [Diridium Technologies Inc.]
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -41,6 +28,8 @@ public class DecomposedDiffWindow extends JDialog {
 
     private final Map<String, DecomposedComponent> leftComponents;
     private final Map<String, DecomposedComponent> rightComponents;
+    private final Map<String, String> leftGroupDisplayNames;
+    private final Map<String, String> rightGroupDisplayNames;
     private final String leftRawXml;
     private final String rightRawXml;
     private JPanel diffContainer;
@@ -52,10 +41,14 @@ public class DecomposedDiffWindow extends JDialog {
     private DecomposedDiffWindow(java.awt.Dialog parent, String title, String leftLabel, String rightLabel,
                                   Map<String, DecomposedComponent> leftComponents,
                                   Map<String, DecomposedComponent> rightComponents,
+                                  Map<String, String> leftGroupDisplayNames,
+                                  Map<String, String> rightGroupDisplayNames,
                                   String leftRawXml, String rightRawXml) {
         super(parent, title, true);
         this.leftComponents = leftComponents;
         this.rightComponents = rightComponents;
+        this.leftGroupDisplayNames = leftGroupDisplayNames;
+        this.rightGroupDisplayNames = rightGroupDisplayNames;
         this.leftRawXml = leftRawXml;
         this.rightRawXml = rightRawXml;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -75,11 +68,13 @@ public class DecomposedDiffWindow extends JDialog {
 
     public static DecomposedDiffWindow create(java.awt.Dialog parent, String title,
             String leftLabel, String rightLabel,
-            Map<String, DecomposedComponent> leftComponents,
-            Map<String, DecomposedComponent> rightComponents,
+            ChannelXmlDecomposer.DecomposeResult leftResult,
+            ChannelXmlDecomposer.DecomposeResult rightResult,
             String leftRawXml, String rightRawXml) {
         return new DecomposedDiffWindow(parent, title, leftLabel, rightLabel,
-                leftComponents, rightComponents, leftRawXml, rightRawXml);
+                leftResult.getComponents(), rightResult.getComponents(),
+                leftResult.getGroupDisplayNames(), rightResult.getGroupDisplayNames(),
+                leftRawXml, rightRawXml);
     }
 
     private void buildContent(String leftLabel, String rightLabel) {
@@ -95,7 +90,8 @@ public class DecomposedDiffWindow extends JDialog {
         labelPanel.add(lblRight);
 
         // --- Decomposed view ---
-        ComponentTreePanel treePanel = new ComponentTreePanel(leftComponents, rightComponents);
+        ComponentTreePanel treePanel = new ComponentTreePanel(leftComponents, rightComponents,
+                leftGroupDisplayNames, rightGroupDisplayNames);
         treePanel.setPreferredSize(new Dimension(280, 0));
         treePanel.setMinimumSize(new Dimension(200, 0));
 
