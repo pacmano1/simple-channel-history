@@ -119,4 +119,65 @@ public class ComponentTreePanelTest {
         assertEquals(ComponentTreePanel.ChangeType.RIGHT_ONLY,
                 ComponentTreePanel.computeGroupChangeType(changeTypes, List.of("added")));
     }
+
+    @Test
+    public void testStepReorderDetection() {
+        // Two steps in a transformer, same content but swapped order.
+        // sequenceNumber and operator change on reorder (positional) — detection must ignore them.
+        String stepAatPos0 = "<Step><sequenceNumber>0</sequenceNumber><operator>NONE</operator><name>MapperStep</name><script>doA()</script></Step>";
+        String stepBatPos1 = "<Step><sequenceNumber>1</sequenceNumber><operator>AND</operator><name>JSStep</name><script>doB()</script></Step>";
+        String stepBatPos0 = "<Step><sequenceNumber>0</sequenceNumber><operator>NONE</operator><name>JSStep</name><script>doB()</script></Step>";
+        String stepAatPos1 = "<Step><sequenceNumber>1</sequenceNumber><operator>AND</operator><name>MapperStep</name><script>doA()</script></Step>";
+
+        Map<String, DecomposedComponent> left = new LinkedHashMap<>();
+        left.put("Destination [1]/Transformer/Step 0",
+                new DecomposedComponent("Destination [1]/Transformer/Step 0", "Step 0: MapperStep",
+                        stepAatPos0, DecomposedComponent.Category.TRANSFORMER, "Destination [1]/Transformer"));
+        left.put("Destination [1]/Transformer/Step 1",
+                new DecomposedComponent("Destination [1]/Transformer/Step 1", "Step 1: JSStep",
+                        stepBatPos1, DecomposedComponent.Category.TRANSFORMER, "Destination [1]/Transformer"));
+        left.put("Destination [1]/Configuration",
+                new DecomposedComponent("Destination [1]/Configuration", "Configuration",
+                        "config", DecomposedComponent.Category.CONNECTOR_CONFIGURATION, "Destination [1]"));
+
+        Map<String, DecomposedComponent> right = new LinkedHashMap<>();
+        right.put("Destination [1]/Transformer/Step 0",
+                new DecomposedComponent("Destination [1]/Transformer/Step 0", "Step 0: JSStep",
+                        stepBatPos0, DecomposedComponent.Category.TRANSFORMER, "Destination [1]/Transformer"));
+        right.put("Destination [1]/Transformer/Step 1",
+                new DecomposedComponent("Destination [1]/Transformer/Step 1", "Step 1: MapperStep",
+                        stepAatPos1, DecomposedComponent.Category.TRANSFORMER, "Destination [1]/Transformer"));
+        right.put("Destination [1]/Configuration",
+                new DecomposedComponent("Destination [1]/Configuration", "Configuration",
+                        "config", DecomposedComponent.Category.CONNECTOR_CONFIGURATION, "Destination [1]"));
+
+        ComponentTreePanel panel = new ComponentTreePanel(left, right);
+        // Panel detects the reorder — changed count should reflect that steps are modified
+        // (2 steps show as modified because content at each position differs)
+        assertEquals(2, panel.getChangedCount());
+    }
+
+    @Test
+    public void testNoFalseReorderWhenContentActuallyChanged() {
+        // Two steps where content genuinely changed (not just reordered)
+        Map<String, DecomposedComponent> left = new LinkedHashMap<>();
+        left.put("Destination [1]/Transformer/Step 0",
+                new DecomposedComponent("Destination [1]/Transformer/Step 0", "Step 0",
+                        "content-A", DecomposedComponent.Category.TRANSFORMER, "Destination [1]/Transformer"));
+        left.put("Destination [1]/Configuration",
+                new DecomposedComponent("Destination [1]/Configuration", "Configuration",
+                        "config", DecomposedComponent.Category.CONNECTOR_CONFIGURATION, "Destination [1]"));
+
+        Map<String, DecomposedComponent> right = new LinkedHashMap<>();
+        right.put("Destination [1]/Transformer/Step 0",
+                new DecomposedComponent("Destination [1]/Transformer/Step 0", "Step 0",
+                        "content-B", DecomposedComponent.Category.TRANSFORMER, "Destination [1]/Transformer"));
+        right.put("Destination [1]/Configuration",
+                new DecomposedComponent("Destination [1]/Configuration", "Configuration",
+                        "config", DecomposedComponent.Category.CONNECTOR_CONFIGURATION, "Destination [1]"));
+
+        ComponentTreePanel panel = new ComponentTreePanel(left, right);
+        // Content genuinely changed — should show 1 changed, NOT be flagged as reorder
+        assertEquals(1, panel.getChangedCount());
+    }
 }

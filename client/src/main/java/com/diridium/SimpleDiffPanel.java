@@ -9,6 +9,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Rectangle;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.util.ArrayList;
@@ -42,10 +44,11 @@ public class SimpleDiffPanel extends JPanel {
     private static final Color COLOR_CHANGED_NEW = COLOR_ADDED;             // Changed new side = light green
     private static final Color COLOR_HIGHLIGHT_OLD = new Color(255, 150, 150); // Darker red for changed words
     private static final Color COLOR_HIGHLIGHT_NEW = new Color(130, 220, 130); // Darker green for changed words
+    private static final Color COLOR_PADDING = new Color(220, 220, 220);        // Gray for alignment gaps
     private static final Color COLOR_LINE_NUMBER_BG = new Color(240, 240, 240); // Light gray
 
-    private JTextPane leftPane;
-    private JTextPane rightPane;
+    private DiffTextPane leftPane;
+    private DiffTextPane rightPane;
     private JTextArea leftLineNumbers;
     private JTextArea rightLineNumbers;
     private JScrollPane leftScrollPane;
@@ -74,6 +77,7 @@ public class SimpleDiffPanel extends JPanel {
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
                 JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         leftScrollPane.setRowHeaderView(leftLineNumbers);
+        leftScrollPane.getViewport().setBackground(Color.WHITE);
         leftScrollPane.setMinimumSize(smallSize);
         leftScrollPane.setPreferredSize(smallSize);
 
@@ -81,6 +85,7 @@ public class SimpleDiffPanel extends JPanel {
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
                 JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         rightScrollPane.setRowHeaderView(rightLineNumbers);
+        rightScrollPane.getViewport().setBackground(Color.WHITE);
         rightScrollPane.setMinimumSize(smallSize);
         rightScrollPane.setPreferredSize(smallSize);
 
@@ -97,20 +102,57 @@ public class SimpleDiffPanel extends JPanel {
         displayDiff(leftContent, rightContent);
     }
 
-    private JTextPane createTextPane() {
-        // Override to disable word wrap — lets long lines extend beyond the viewport
-        JTextPane pane = new JTextPane() {
-            @Override
-            public boolean getScrollableTracksViewportWidth() {
-                if (getParent() == null || getUI() == null) {
-                    return false;
-                }
-                return getUI().getPreferredSize(this).width <= getParent().getSize().width;
-            }
-        };
+    private DiffTextPane createTextPane() {
+        DiffTextPane pane = new DiffTextPane();
         pane.setEditable(false);
         pane.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        pane.setOpaque(false); // Let DiffTextPane.paintComponent handle background painting
         return pane;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static class DiffTextPane extends JTextPane {
+        private final List<int[]> lineOffsets = new ArrayList<>();
+        private final List<Color> lineColors = new ArrayList<>();
+
+        void addLineBackground(int startOffset, int endOffset, Color color) {
+            lineOffsets.add(new int[]{startOffset, endOffset});
+            lineColors.add(color);
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            if (getParent() == null || getUI() == null) {
+                return false;
+            }
+            return getUI().getPreferredSize(this).width <= getParent().getSize().width;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            // Fill white background (pane is non-opaque so super won't do this)
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, getWidth(), getHeight());
+
+            // Paint full-width line backgrounds before text rendering
+            for (int i = 0; i < lineOffsets.size(); i++) {
+                Color color = lineColors.get(i);
+                if (color == null) {
+                    continue;
+                }
+                int[] offsets = lineOffsets.get(i);
+                try {
+                    Rectangle r = modelToView(offsets[0]);
+                    if (r != null) {
+                        g.setColor(color);
+                        g.fillRect(0, r.y, getWidth(), r.height);
+                    }
+                } catch (BadLocationException e) {
+                    // skip
+                }
+            }
+            super.paintComponent(g);
+        }
     }
 
     private JTextArea createLineNumberArea() {
@@ -179,37 +221,23 @@ public class SimpleDiffPanel extends JPanel {
         StyledDocument leftDoc = leftPane.getStyledDocument();
         StyledDocument rightDoc = rightPane.getStyledDocument();
 
-        // Create styles
+        // Normal style (no background) — used for unchanged text and as base for changed lines
         Style normalStyle = leftDoc.addStyle("normal", null);
+        rightDoc.addStyle("normal", null);
 
-        Style addedStyle = leftDoc.addStyle("added", null);
-        StyleConstants.setBackground(addedStyle, COLOR_ADDED);
-
-        Style deletedStyle = leftDoc.addStyle("deleted", null);
-        StyleConstants.setBackground(deletedStyle, COLOR_DELETED);
-
-        Style changedOldStyle = leftDoc.addStyle("changedOld", null);
-        StyleConstants.setBackground(changedOldStyle, COLOR_CHANGED_OLD);
-
-        Style changedNewStyle = leftDoc.addStyle("changedNew", null);
-        StyleConstants.setBackground(changedNewStyle, COLOR_CHANGED_NEW);
-
+        // Character-level highlight styles for inline word diffs (darker colors)
         Style highlightOldStyle = leftDoc.addStyle("highlightOld", null);
         StyleConstants.setBackground(highlightOldStyle, COLOR_HIGHLIGHT_OLD);
 
-        // Also add styles to right doc
-        rightDoc.addStyle("normal", null);
-        Style rightAdded = rightDoc.addStyle("added", null);
-        StyleConstants.setBackground(rightAdded, COLOR_ADDED);
-        Style rightDeleted = rightDoc.addStyle("deleted", null);
-        StyleConstants.setBackground(rightDeleted, COLOR_DELETED);
-        Style rightChangedOld = rightDoc.addStyle("changedOld", null);
-        StyleConstants.setBackground(rightChangedOld, COLOR_CHANGED_OLD);
-        Style rightChangedNew = rightDoc.addStyle("changedNew", null);
-        StyleConstants.setBackground(rightChangedNew, COLOR_CHANGED_NEW);
-
         Style highlightNewStyle = rightDoc.addStyle("highlightNew", null);
         StyleConstants.setBackground(highlightNewStyle, COLOR_HIGHLIGHT_NEW);
+
+        // Base styles for changed lines — light background on characters
+        Style changedOldCharStyle = leftDoc.addStyle("changedOldChar", null);
+        StyleConstants.setBackground(changedOldCharStyle, COLOR_CHANGED_OLD);
+
+        Style changedNewCharStyle = rightDoc.addStyle("changedNewChar", null);
+        StyleConstants.setBackground(changedNewCharStyle, COLOR_CHANGED_NEW);
 
         try {
             // Track current position in each file
@@ -222,11 +250,11 @@ public class SimpleDiffPanel extends JPanel {
 
                 // Add unchanged lines before this delta
                 while (leftLine < sourceStart) {
-                    appendLine(leftDoc, leftLines.get(leftLine), normalStyle, leftLineNumBuilder, leftLine + 1);
+                    appendLine(leftPane, leftLines.get(leftLine), normalStyle, null, leftLineNumBuilder, leftLine + 1);
                     leftLine++;
                 }
                 while (rightLine < targetStart) {
-                    appendLine(rightDoc, rightLines.get(rightLine), normalStyle, rightLineNumBuilder, rightLine + 1);
+                    appendLine(rightPane, rightLines.get(rightLine), normalStyle, null, rightLineNumBuilder, rightLine + 1);
                     rightLine++;
                 }
 
@@ -235,22 +263,23 @@ public class SimpleDiffPanel extends JPanel {
                     case DELETE:
                         // Lines deleted from left (not in right)
                         for (String line : delta.getSource().getLines()) {
-                            appendLine(leftDoc, line, deletedStyle, leftLineNumBuilder, leftLine + 1);
+                            appendLine(leftPane, line, normalStyle, COLOR_DELETED, leftLineNumBuilder, leftLine + 1);
                             leftLine++;
                         }
-                        // Add blank lines on right to keep alignment (no line number)
+                        // Add gray padding lines on right to keep alignment
                         for (int i = 0; i < delta.getSource().getLines().size(); i++) {
-                            appendLine(rightDoc, "", deletedStyle, rightLineNumBuilder, -1);
+                            appendLine(rightPane, "", normalStyle, COLOR_PADDING, rightLineNumBuilder, -1);
                         }
                         break;
 
                     case INSERT:
-                        // Lines added to right (not in left)
+                        // Gray padding lines on left to keep alignment
                         for (int i = 0; i < delta.getTarget().getLines().size(); i++) {
-                            appendLine(leftDoc, "", addedStyle, leftLineNumBuilder, -1);
+                            appendLine(leftPane, "", normalStyle, COLOR_PADDING, leftLineNumBuilder, -1);
                         }
+                        // Lines added to right
                         for (String line : delta.getTarget().getLines()) {
-                            appendLine(rightDoc, line, addedStyle, rightLineNumBuilder, rightLine + 1);
+                            appendLine(rightPane, line, normalStyle, COLOR_ADDED, rightLineNumBuilder, rightLine + 1);
                             rightLine++;
                         }
                         break;
@@ -271,17 +300,17 @@ public class SimpleDiffPanel extends JPanel {
                                 boolean[] oldHighlights = computeInlineHighlights(oldLine.length(), charPatch, true);
                                 boolean[] newHighlights = computeInlineHighlights(newLine.length(), charPatch, false);
 
-                                appendLineWithHighlights(leftDoc, oldLine, changedOldStyle, highlightOldStyle, oldHighlights, leftLineNumBuilder, leftLine + 1);
+                                appendLineWithHighlights(leftPane, oldLine, changedOldCharStyle, highlightOldStyle, COLOR_CHANGED_OLD, oldHighlights, leftLineNumBuilder, leftLine + 1);
                                 leftLine++;
-                                appendLineWithHighlights(rightDoc, newLine, changedNewStyle, highlightNewStyle, newHighlights, rightLineNumBuilder, rightLine + 1);
+                                appendLineWithHighlights(rightPane, newLine, changedNewCharStyle, highlightNewStyle, COLOR_CHANGED_NEW, newHighlights, rightLineNumBuilder, rightLine + 1);
                                 rightLine++;
                             } else if (i < oldLines.size()) {
-                                appendLine(leftDoc, oldLines.get(i), changedOldStyle, leftLineNumBuilder, leftLine + 1);
+                                appendLine(leftPane, oldLines.get(i), normalStyle, COLOR_CHANGED_OLD, leftLineNumBuilder, leftLine + 1);
                                 leftLine++;
-                                appendLine(rightDoc, "", changedNewStyle, rightLineNumBuilder, -1);
+                                appendLine(rightPane, "", normalStyle, COLOR_PADDING, rightLineNumBuilder, -1);
                             } else {
-                                appendLine(leftDoc, "", changedOldStyle, leftLineNumBuilder, -1);
-                                appendLine(rightDoc, newLines.get(i), changedNewStyle, rightLineNumBuilder, rightLine + 1);
+                                appendLine(leftPane, "", normalStyle, COLOR_PADDING, leftLineNumBuilder, -1);
+                                appendLine(rightPane, newLines.get(i), normalStyle, COLOR_CHANGED_NEW, rightLineNumBuilder, rightLine + 1);
                                 rightLine++;
                             }
                         }
@@ -294,11 +323,11 @@ public class SimpleDiffPanel extends JPanel {
 
             // Add remaining unchanged lines
             while (leftLine < leftLines.size()) {
-                appendLine(leftDoc, leftLines.get(leftLine), normalStyle, leftLineNumBuilder, leftLine + 1);
+                appendLine(leftPane, leftLines.get(leftLine), normalStyle, null, leftLineNumBuilder, leftLine + 1);
                 leftLine++;
             }
             while (rightLine < rightLines.size()) {
-                appendLine(rightDoc, rightLines.get(rightLine), normalStyle, rightLineNumBuilder, rightLine + 1);
+                appendLine(rightPane, rightLines.get(rightLine), normalStyle, null, rightLineNumBuilder, rightLine + 1);
                 rightLine++;
             }
 
@@ -314,7 +343,7 @@ public class SimpleDiffPanel extends JPanel {
         int maxLineNum = Math.max(leftLines.size(), rightLines.size());
         int digits = String.valueOf(maxLineNum).length();
         FontMetrics fm = leftLineNumbers.getFontMetrics(leftLineNumbers.getFont());
-        int width = fm.charWidth('0') * (digits + 2); // +2 for padding
+        int width = fm.charWidth('0') * (Math.max(digits, 4) + 2); // +2 for padding, min 4 to match %4d format
 
         leftLineNumbers.setPreferredSize(new Dimension(width, leftLineNumbers.getPreferredSize().height));
         rightLineNumbers.setPreferredSize(new Dimension(width, rightLineNumbers.getPreferredSize().height));
@@ -324,15 +353,18 @@ public class SimpleDiffPanel extends JPanel {
         rightPane.setCaretPosition(0);
     }
 
-    private void appendLine(StyledDocument doc, String line, Style style, StringBuilder lineNumBuilder, int lineNum) throws BadLocationException {
+    private void appendLine(DiffTextPane pane, String line, Style style, Color bgColor,
+            StringBuilder lineNumBuilder, int lineNum) throws BadLocationException {
+        StyledDocument doc = pane.getStyledDocument();
         int length = doc.getLength();
         if (length > 0) {
             doc.insertString(length, "\n", style);
             lineNumBuilder.append("\n");
         }
-        doc.insertString(doc.getLength(), line, style);
+        int lineStart = doc.getLength();
+        doc.insertString(lineStart, line.isEmpty() ? " " : line, style);
+        pane.addLineBackground(lineStart, doc.getLength(), bgColor);
 
-        // Append line number (or blank for padding lines)
         if (lineNum > 0) {
             lineNumBuilder.append(String.format("%4d ", lineNum));
         } else {
@@ -340,15 +372,18 @@ public class SimpleDiffPanel extends JPanel {
         }
     }
 
-    private void appendLineWithHighlights(StyledDocument doc, String line, Style baseStyle, Style highlightStyle,
-            boolean[] highlights, StringBuilder lineNumBuilder, int lineNum) throws BadLocationException {
+    private void appendLineWithHighlights(DiffTextPane pane, String line, Style baseStyle, Style highlightStyle,
+            Color bgColor, boolean[] highlights, StringBuilder lineNumBuilder, int lineNum) throws BadLocationException {
+        StyledDocument doc = pane.getStyledDocument();
         int length = doc.getLength();
         if (length > 0) {
             doc.insertString(length, "\n", baseStyle);
             lineNumBuilder.append("\n");
         }
 
-        // Insert the line in runs, switching between base and highlight styles
+        int lineStart = doc.getLength();
+
+        // Insert the line in runs, switching between base and highlight styles for character-level diffs
         int i = 0;
         while (i < line.length()) {
             boolean hl = (i < highlights.length) && highlights[i];
@@ -360,6 +395,8 @@ public class SimpleDiffPanel extends JPanel {
             }
             doc.insertString(doc.getLength(), line.substring(runStart, i), hl ? highlightStyle : baseStyle);
         }
+
+        pane.addLineBackground(lineStart, doc.getLength(), bgColor);
 
         if (lineNum > 0) {
             lineNumBuilder.append(String.format("%4d ", lineNum));

@@ -234,10 +234,10 @@ public class ChannelHistoryDialog extends JDialog {
             String rightLabel = String.format("New - %s (user: %s, time: %s)", newer.getShortHash(), newer.getCommitterName(), sdf.format(new Date(newer.getTime())));
 
             try {
-                Map<String, DecomposedComponent> leftComponents = ChannelXmlDecomposer.decompose(left);
-                Map<String, DecomposedComponent> rightComponents = ChannelXmlDecomposer.decompose(right);
+                ChannelXmlDecomposer.DecomposeResult leftResult = ChannelXmlDecomposer.decomposeWithNames(left);
+                ChannelXmlDecomposer.DecomposeResult rightResult = ChannelXmlDecomposer.decomposeWithNames(right);
                 DecomposedDiffWindow dw = DecomposedDiffWindow.create(this, "Channel Diff - " + channelName,
-                        leftLabel, rightLabel, leftComponents, rightComponents, left, right);
+                        leftLabel, rightLabel, leftResult, rightResult, left, right);
                 dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
                 dw.setVisible(true);
             } catch (Exception decompositionEx) {

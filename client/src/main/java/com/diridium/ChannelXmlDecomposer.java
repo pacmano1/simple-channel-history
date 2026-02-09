@@ -21,6 +21,8 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
+import com.mirth.connect.util.MirthXmlUtil;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -29,7 +31,40 @@ import org.xml.sax.InputSource;
 
 public class ChannelXmlDecomposer {
 
+    /**
+     * Result of decomposing a channel XML, containing the component map and
+     * a mapping from stable group keys to human-readable display names.
+     */
+    public static class DecomposeResult {
+        private final Map<String, DecomposedComponent> components;
+        private final Map<String, String> groupDisplayNames;
+
+        DecomposeResult(Map<String, DecomposedComponent> components, Map<String, String> groupDisplayNames) {
+            this.components = components;
+            this.groupDisplayNames = groupDisplayNames;
+        }
+
+        public Map<String, DecomposedComponent> getComponents() {
+            return components;
+        }
+
+        public Map<String, String> getGroupDisplayNames() {
+            return groupDisplayNames;
+        }
+    }
+
+    public static DecomposeResult decomposeWithNames(String channelXml) throws Exception {
+        Map<String, String> groupDisplayNames = new LinkedHashMap<>();
+        Map<String, DecomposedComponent> components = decomposeInternal(channelXml, groupDisplayNames);
+        return new DecomposeResult(components, groupDisplayNames);
+    }
+
     public static Map<String, DecomposedComponent> decompose(String channelXml) throws Exception {
+        return decomposeInternal(channelXml, null);
+    }
+
+    private static Map<String, DecomposedComponent> decomposeInternal(String channelXml,
+            Map<String, String> groupDisplayNames) throws Exception {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         dbf.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, true);
         dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
@@ -78,7 +113,11 @@ public class ChannelXmlDecomposer {
             Element connector = (Element) destConnectors.item(i);
             String connName = getDirectChildText(connector, "name");
             String metaDataId = getDirectChildText(connector, "metaDataId");
-            String groupName = "Destination: " + connName + " [" + metaDataId + "]";
+            String groupName = "Destination [" + metaDataId + "]";
+            String displayName = "Destination: " + connName + " [" + metaDataId + "]";
+            if (groupDisplayNames != null) {
+                groupDisplayNames.put(groupName, displayName);
+            }
             destElements.add(connector);
             destGroupNames.add(groupName);
 
@@ -269,13 +308,10 @@ public class ChannelXmlDecomposer {
         tf.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_DTD, "");
         tf.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
         Transformer transformer = tf.newTransformer();
-        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
         transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
-        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
         StringWriter writer = new StringWriter();
         transformer.transform(new DOMSource(node), new StreamResult(writer));
-        // Remove blank lines left behind by removed DOM nodes
-        return writer.toString().trim().replaceAll("(?m)^\\s*$\\n", "");
+        return MirthXmlUtil.prettyPrint(writer.toString().trim()).trim();
     }
 
     private static String serializeDocument(Document doc) throws Exception {
