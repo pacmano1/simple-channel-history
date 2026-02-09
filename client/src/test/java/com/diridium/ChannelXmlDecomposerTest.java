@@ -1,20 +1,7 @@
+// SPDX-FileCopyrightText: Copyright 2025-2026 Diridium Technologies Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package com.diridium;
-
-/*
-   Copyright [2025-2026] [Diridium Technologies Inc.]
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 import static org.junit.Assert.*;
 
@@ -73,6 +60,12 @@ public class ChannelXmlDecomposerTest {
 
         // Channel Properties remainder
         assertNotNull(components.get("Channel Properties"));
+
+        // Destination Order
+        DecomposedComponent destOrder = components.get("Destination Order");
+        assertNotNull(destOrder);
+        assertEquals("1. Destination 1 [1]\n2. Destination 2 [2]", destOrder.getContent());
+        assertEquals(DecomposedComponent.Category.CHANNEL_PROPERTIES, destOrder.getCategory());
     }
 
     @Test
@@ -125,6 +118,11 @@ public class ChannelXmlDecomposerTest {
         assertNotEquals(
                 comp1.get("Destination: Destination 2 [2]/Configuration").getContent(),
                 comp2.get("Destination: Destination 2 [2]/Configuration").getContent());
+
+        // Destination Order should be the same (same destinations in same order)
+        assertEquals(
+                comp1.get("Destination Order").getContent(),
+                comp2.get("Destination Order").getContent());
     }
 
     @Test
@@ -338,5 +336,77 @@ public class ChannelXmlDecomposerTest {
                 ChannelXmlDecomposer.getStepTypeName("com.mirth.connect.plugins.mapper.MapperStep"));
         assertEquals("simpleTag",
                 ChannelXmlDecomposer.getStepTypeName("simpleTag"));
+    }
+
+    @Test
+    public void testDestinationOrderReorderDetection() throws Exception {
+        String xml1 = "<channel version=\"3.9.1\">"
+                + "<id>test-id</id><name>test</name><revision>1</revision>"
+                + "<sourceConnector version=\"3.9.1\">"
+                + "  <metaDataId>0</metaDataId><name>sourceConnector</name>"
+                + "  <properties class=\"com.mirth.connect.connectors.vm.VmReceiverProperties\"/>"
+                + "  <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "  <filter version=\"3.9.1\"><elements/></filter>"
+                + "</sourceConnector>"
+                + "<destinationConnectors>"
+                + "  <connector version=\"3.9.1\">"
+                + "    <metaDataId>1</metaDataId><name>Dest A</name>"
+                + "    <properties class=\"com.mirth.connect.connectors.vm.VmDispatcherProperties\"/>"
+                + "    <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "    <filter version=\"3.9.1\"><elements/></filter>"
+                + "  </connector>"
+                + "  <connector version=\"3.9.1\">"
+                + "    <metaDataId>2</metaDataId><name>Dest B</name>"
+                + "    <properties class=\"com.mirth.connect.connectors.vm.VmDispatcherProperties\"/>"
+                + "    <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "    <filter version=\"3.9.1\"><elements/></filter>"
+                + "  </connector>"
+                + "</destinationConnectors>"
+                + "</channel>";
+
+        // Same channel but destinations reordered
+        String xml2 = "<channel version=\"3.9.1\">"
+                + "<id>test-id</id><name>test</name><revision>1</revision>"
+                + "<sourceConnector version=\"3.9.1\">"
+                + "  <metaDataId>0</metaDataId><name>sourceConnector</name>"
+                + "  <properties class=\"com.mirth.connect.connectors.vm.VmReceiverProperties\"/>"
+                + "  <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "  <filter version=\"3.9.1\"><elements/></filter>"
+                + "</sourceConnector>"
+                + "<destinationConnectors>"
+                + "  <connector version=\"3.9.1\">"
+                + "    <metaDataId>2</metaDataId><name>Dest B</name>"
+                + "    <properties class=\"com.mirth.connect.connectors.vm.VmDispatcherProperties\"/>"
+                + "    <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "    <filter version=\"3.9.1\"><elements/></filter>"
+                + "  </connector>"
+                + "  <connector version=\"3.9.1\">"
+                + "    <metaDataId>1</metaDataId><name>Dest A</name>"
+                + "    <properties class=\"com.mirth.connect.connectors.vm.VmDispatcherProperties\"/>"
+                + "    <transformer version=\"3.9.1\"><elements/></transformer>"
+                + "    <filter version=\"3.9.1\"><elements/></filter>"
+                + "  </connector>"
+                + "</destinationConnectors>"
+                + "</channel>";
+
+        Map<String, DecomposedComponent> comp1 = ChannelXmlDecomposer.decompose(xml1);
+        Map<String, DecomposedComponent> comp2 = ChannelXmlDecomposer.decompose(xml2);
+
+        // Destination Order should differ (destinations reordered)
+        assertNotEquals(
+                comp1.get("Destination Order").getContent(),
+                comp2.get("Destination Order").getContent());
+        assertEquals("1. Dest A [1]\n2. Dest B [2]",
+                comp1.get("Destination Order").getContent());
+        assertEquals("1. Dest B [2]\n2. Dest A [1]",
+                comp2.get("Destination Order").getContent());
+
+        // Individual destination components should still match (content unchanged)
+        assertEquals(
+                comp1.get("Destination: Dest A [1]/Configuration").getContent(),
+                comp2.get("Destination: Dest A [1]/Configuration").getContent());
+        assertEquals(
+                comp1.get("Destination: Dest B [2]/Configuration").getContent(),
+                comp2.get("Destination: Dest B [2]/Configuration").getContent());
     }
 }

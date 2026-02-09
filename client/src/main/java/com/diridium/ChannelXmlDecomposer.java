@@ -1,20 +1,7 @@
+// SPDX-FileCopyrightText: Copyright 2025-2026 Diridium Technologies Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package com.diridium;
-
-/*
-   Copyright [2025-2026] [Diridium Technologies Inc.]
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
 
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -86,6 +73,7 @@ public class ChannelXmlDecomposer {
                 "/channel/destinationConnectors/connector", doc, XPathConstants.NODESET);
         List<Element> destElements = new ArrayList<>();
         List<String> destGroupNames = new ArrayList<>();
+        StringBuilder destOrderBuilder = new StringBuilder();
         for (int i = 0; i < destConnectors.getLength(); i++) {
             Element connector = (Element) destConnectors.item(i);
             String connName = getDirectChildText(connector, "name");
@@ -93,6 +81,11 @@ public class ChannelXmlDecomposer {
             String groupName = "Destination: " + connName + " [" + metaDataId + "]";
             destElements.add(connector);
             destGroupNames.add(groupName);
+
+            if (destOrderBuilder.length() > 0) {
+                destOrderBuilder.append("\n");
+            }
+            destOrderBuilder.append(i + 1).append(". ").append(connName).append(" [").append(metaDataId).append("]");
 
             extractConnectorScript(xpath, components, connector, groupName);
             extractPluginProperties(xpath, components, connector, groupName);
@@ -127,10 +120,16 @@ public class ChannelXmlDecomposer {
         String remainderXml = serializeDocument(doc);
         String key = "Channel Properties";
 
-        // Reorder so Channel Properties appears first in the tree
+        // Reorder so Channel Properties and Destination Order appear first in the tree
         Map<String, DecomposedComponent> ordered = new LinkedHashMap<>();
         ordered.put(key, new DecomposedComponent(key, "Channel Properties", remainderXml,
                 DecomposedComponent.Category.CHANNEL_PROPERTIES, key));
+        if (destOrderBuilder.length() > 0) {
+            String destOrderKey = "Destination Order";
+            ordered.put(destOrderKey, new DecomposedComponent(destOrderKey, "Destination Order",
+                    destOrderBuilder.toString(),
+                    DecomposedComponent.Category.CHANNEL_PROPERTIES, destOrderKey));
+        }
         ordered.putAll(components);
 
         return ordered;
