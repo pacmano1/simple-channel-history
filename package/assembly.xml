@@ -19,6 +19,7 @@
                 <include>simple-channel-history-*.jar</include>
                 <include>java-diff-utils-*.jar</include>
                 <include>plugin.xml</include>
+                <include>sqlmap.xml</include>
             </includes>
         </fileSet>
     </fileSets>

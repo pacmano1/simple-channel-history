@@ -41,6 +41,7 @@ public class CodeTemplateVersionController implements CodeTemplateServerPlugin {
 
     @Override
     public void remove(CodeTemplate ct, ServerEventContext sec) {
+        repo.saveDeletedCodeTemplate(ct, sec.getUserId());
         repo.deleteCodeTemplateHistory(ct.getId());
     }
 

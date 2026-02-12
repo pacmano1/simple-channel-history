@@ -4,19 +4,15 @@
 
 package com.diridium;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import org.apache.ibatis.session.SqlSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mirth.connect.donkey.server.data.DonkeyDaoFactory;
 import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.codetemplates.CodeTemplate;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
@@ -31,6 +27,8 @@ public class DatabaseHistoryRepository {
 
     private static DatabaseHistoryRepository instance;
     private static final Logger log = LoggerFactory.getLogger(DatabaseHistoryRepository.class);
+
+    private static final String NAMESPACE = "ChannelHistory";
 
     private ObjectXMLSerializer serializer;
     private UserController userController;
@@ -58,50 +56,46 @@ public class DatabaseHistoryRepository {
         instance = null;
     }
 
+    private static String stmt(String id) {
+        return NAMESPACE + "." + id;
+    }
+
     // ========== Channel History Methods ==========
 
     public void saveChannelHistory(Channel channel, int userId) {
-        String sql = "INSERT INTO channel_history (revision, channel_id, user_id, date_created, channel) VALUES (?, ?, ?, ?, ?)";
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("revision", channel.getRevision());
+            params.put("channelId", channel.getId());
+            params.put("userId", userId);
+            params.put("dateCreated", new Timestamp(System.currentTimeMillis()));
+            params.put("channel", serializer.serialize(channel));
 
-        try (SqlSession session = SqlConfig.getInstance().getSqlSessionManager().openSession(true);
-             Connection conn = session.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            String xml = serializer.serialize(channel);
-            ps.setInt(1, channel.getRevision());
-            ps.setString(2, channel.getId());
-            ps.setInt(3, userId);
-            ps.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
-            ps.setString(5, xml);
-
-            ps.executeUpdate();
+            SqlConfig.getInstance().getSqlSessionManager().insert(stmt("insertChannelHistory"), params);
             log.debug("Saved channel history for channel {} revision {}", channel.getId(), channel.getRevision());
-        } catch (SQLException e) {
+        } catch (Exception e) {
             // Fail silent - don't block channel save if history save fails
             log.error("Failed to save channel history for channel {}", channel.getId(), e);
         }
     }
 
     public List<RevisionInfo> getChannelHistory(String channelId) {
-        String sql = "SELECT id, revision, user_id, date_created FROM channel_history WHERE channel_id = ? ORDER BY id DESC";
         List<RevisionInfo> history = new ArrayList<>();
 
-        try (SqlSession session = SqlConfig.getInstance().getSqlSessionManager().openSession(true);
-             Connection conn = session.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try {
+            List<Map<String, Object>> results = SqlConfig.getInstance().getSqlSessionManager()
+                    .selectList(stmt("getChannelHistory"), channelId);
 
-            ps.setString(1, channelId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    RevisionInfo ri = new RevisionInfo();
-                    ri.setHash(String.valueOf(rs.getLong("id")));
-                    ri.setRevision(rs.getInt("revision"));
-                    ri.setTime(rs.getTimestamp("date_created").getTime());
-                    ri.setCommitterName(getUserName(rs.getInt("user_id")));
-                    history.add(ri);
-                }
+            for (Map<String, Object> row : results) {
+                RevisionInfo ri = new RevisionInfo();
+                ri.setHash(String.valueOf(row.get("id")));
+                ri.setRevision((Integer) row.get("revision"));
+                Timestamp ts = (Timestamp) row.get("dateCreated");
+                ri.setTime(ts != null ? ts.getTime() : 0L);
+                ri.setCommitterName(getUserName((Integer) row.get("userId")));
+                history.add(ri);
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             log.error("Failed to get channel history for {}", channelId, e);
             throw new RuntimeException(e);
         }
@@ -110,44 +104,29 @@ public class DatabaseHistoryRepository {
     }
 
     public String getChannelContent(String channelId, String historyId) {
-        String sql = "SELECT channel FROM channel_history WHERE id = ? AND channel_id = ?";
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("id", Long.parseLong(historyId));
+            params.put("channelId", channelId);
 
-        try (SqlSession session = SqlConfig.getInstance().getSqlSessionManager().openSession(true);
-             Connection conn = session.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setLong(1, Long.parseLong(historyId));
-            ps.setString(2, channelId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString("channel");
-                }
-            }
-        } catch (SQLException e) {
+            return SqlConfig.getInstance().getSqlSessionManager()
+                    .selectOne(stmt("getChannelContent"), params);
+        } catch (Exception e) {
             log.error("Failed to get channel content for {} at history {}", channelId, historyId, e);
             throw new RuntimeException(e);
         }
-
-        return null;
     }
 
     public int getChannelRevisionNumber(String channelId, String historyId) {
-        String sql = "SELECT revision FROM channel_history WHERE id = ? AND channel_id = ?";
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("id", Long.parseLong(historyId));
+            params.put("channelId", channelId);
 
-        try (SqlSession session = SqlConfig.getInstance().getSqlSessionManager().openSession(true);
-             Connection conn = session.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setLong(1, Long.parseLong(historyId));
-            ps.setString(2, channelId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("revision");
-                }
-            }
-        } catch (SQLException e) {
+            Integer revision = SqlConfig.getInstance().getSqlSessionManager()
+                    .selectOne(stmt("getChannelRevisionNumber"), params);
+            return revision != null ? revision : -1;
+        } catch (Exception e) {
             log.error("Failed to get revision number for {} at history {}", channelId, historyId, e);
         }
 
@@ -170,16 +149,11 @@ public class DatabaseHistoryRepository {
     }
 
     public void deleteChannelHistory(String channelId) {
-        String sql = "DELETE FROM channel_history WHERE channel_id = ?";
-
-        try (SqlSession session = SqlConfig.getInstance().getSqlSessionManager().openSession(true);
-             Connection conn = session.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, channelId);
-            int deleted = ps.executeUpdate();
+        try {
+            int deleted = SqlConfig.getInstance().getSqlSessionManager()
+                    .delete(stmt("deleteChannelHistory"), channelId);
             log.debug("Deleted {} history entries for channel {}", deleted, channelId);
-        } catch (SQLException e) {
+        } catch (Exception e) {
             // Fail silent - don't block channel delete if history cleanup fails
             log.error("Failed to delete channel history for {}", channelId, e);
         }
@@ -188,47 +162,39 @@ public class DatabaseHistoryRepository {
     // ========== Code Template History Methods ==========
 
     public void saveCodeTemplateHistory(CodeTemplate codeTemplate, int userId) {
-        String sql = "INSERT INTO code_template_history (revision, code_template_id, user_id, date_created, code_template) VALUES (?, ?, ?, ?, ?)";
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("revision", codeTemplate.getRevision());
+            params.put("codeTemplateId", codeTemplate.getId());
+            params.put("userId", userId);
+            params.put("dateCreated", new Timestamp(System.currentTimeMillis()));
+            params.put("codeTemplate", serializer.serialize(codeTemplate));
 
-        try (SqlSession session = SqlConfig.getInstance().getSqlSessionManager().openSession(true);
-             Connection conn = session.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            String xml = serializer.serialize(codeTemplate);
-            ps.setInt(1, codeTemplate.getRevision());
-            ps.setString(2, codeTemplate.getId());
-            ps.setInt(3, userId);
-            ps.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
-            ps.setString(5, xml);
-
-            ps.executeUpdate();
+            SqlConfig.getInstance().getSqlSessionManager().insert(stmt("insertCodeTemplateHistory"), params);
             log.debug("Saved code template history for {} revision {}", codeTemplate.getId(), codeTemplate.getRevision());
-        } catch (SQLException e) {
+        } catch (Exception e) {
             // Fail silent - don't block code template save if history save fails
             log.error("Failed to save code template history for {}", codeTemplate.getId(), e);
         }
     }
 
     public List<RevisionInfo> getCodeTemplateHistory(String codeTemplateId) {
-        String sql = "SELECT id, revision, user_id, date_created FROM code_template_history WHERE code_template_id = ? ORDER BY id DESC";
         List<RevisionInfo> history = new ArrayList<>();
 
-        try (SqlSession session = SqlConfig.getInstance().getSqlSessionManager().openSession(true);
-             Connection conn = session.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try {
+            List<Map<String, Object>> results = SqlConfig.getInstance().getSqlSessionManager()
+                    .selectList(stmt("getCodeTemplateHistory"), codeTemplateId);
 
-            ps.setString(1, codeTemplateId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    RevisionInfo ri = new RevisionInfo();
-                    ri.setHash(String.valueOf(rs.getLong("id")));
-                    ri.setRevision(rs.getInt("revision"));
-                    ri.setTime(rs.getTimestamp("date_created").getTime());
-                    ri.setCommitterName(getUserName(rs.getInt("user_id")));
-                    history.add(ri);
-                }
+            for (Map<String, Object> row : results) {
+                RevisionInfo ri = new RevisionInfo();
+                ri.setHash(String.valueOf(row.get("id")));
+                ri.setRevision((Integer) row.get("revision"));
+                Timestamp ts = (Timestamp) row.get("dateCreated");
+                ri.setTime(ts != null ? ts.getTime() : 0L);
+                ri.setCommitterName(getUserName((Integer) row.get("userId")));
+                history.add(ri);
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             log.error("Failed to get code template history for {}", codeTemplateId, e);
             throw new RuntimeException(e);
         }
@@ -237,39 +203,25 @@ public class DatabaseHistoryRepository {
     }
 
     public String getCodeTemplateContent(String codeTemplateId, String historyId) {
-        String sql = "SELECT code_template FROM code_template_history WHERE id = ? AND code_template_id = ?";
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("id", Long.parseLong(historyId));
+            params.put("codeTemplateId", codeTemplateId);
 
-        try (SqlSession session = SqlConfig.getInstance().getSqlSessionManager().openSession(true);
-             Connection conn = session.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setLong(1, Long.parseLong(historyId));
-            ps.setString(2, codeTemplateId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString("code_template");
-                }
-            }
-        } catch (SQLException e) {
+            return SqlConfig.getInstance().getSqlSessionManager()
+                    .selectOne(stmt("getCodeTemplateContent"), params);
+        } catch (Exception e) {
             log.error("Failed to get code template content for {} at history {}", codeTemplateId, historyId, e);
             throw new RuntimeException(e);
         }
-
-        return null;
     }
 
     public void deleteCodeTemplateHistory(String codeTemplateId) {
-        String sql = "DELETE FROM code_template_history WHERE code_template_id = ?";
-
-        try (SqlSession session = SqlConfig.getInstance().getSqlSessionManager().openSession(true);
-             Connection conn = session.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, codeTemplateId);
-            int deleted = ps.executeUpdate();
+        try {
+            int deleted = SqlConfig.getInstance().getSqlSessionManager()
+                    .delete(stmt("deleteCodeTemplateHistory"), codeTemplateId);
             log.debug("Deleted {} history entries for code template {}", deleted, codeTemplateId);
-        } catch (SQLException e) {
+        } catch (Exception e) {
             // Fail silent - don't block code template delete if history cleanup fails
             log.error("Failed to delete code template history for {}", codeTemplateId, e);
         }
@@ -293,37 +245,201 @@ public class DatabaseHistoryRepository {
     // ========== Prune Methods ==========
 
     public int pruneChannelHistoryOlderThan(String channelId, String historyId) {
-        String sql = "DELETE FROM channel_history WHERE channel_id = ? AND id < ?";
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("channelId", channelId);
+            params.put("id", Long.parseLong(historyId));
 
-        try (SqlSession session = SqlConfig.getInstance().getSqlSessionManager().openSession(true);
-             Connection conn = session.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, channelId);
-            ps.setLong(2, Long.parseLong(historyId));
-            int deleted = ps.executeUpdate();
+            int deleted = SqlConfig.getInstance().getSqlSessionManager()
+                    .delete(stmt("pruneChannelHistory"), params);
             log.info("Pruned {} older history entries for channel {}", deleted, channelId);
             return deleted;
-        } catch (SQLException e) {
+        } catch (Exception e) {
             log.error("Failed to prune channel history for {}", channelId, e);
             throw new RuntimeException(e);
         }
     }
 
     public int pruneCodeTemplateHistoryOlderThan(String codeTemplateId, String historyId) {
-        String sql = "DELETE FROM code_template_history WHERE code_template_id = ? AND id < ?";
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("codeTemplateId", codeTemplateId);
+            params.put("id", Long.parseLong(historyId));
 
-        try (SqlSession session = SqlConfig.getInstance().getSqlSessionManager().openSession(true);
-             Connection conn = session.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, codeTemplateId);
-            ps.setLong(2, Long.parseLong(historyId));
-            int deleted = ps.executeUpdate();
+            int deleted = SqlConfig.getInstance().getSqlSessionManager()
+                    .delete(stmt("pruneCodeTemplateHistory"), params);
             log.info("Pruned {} older history entries for code template {}", deleted, codeTemplateId);
             return deleted;
-        } catch (SQLException e) {
+        } catch (Exception e) {
             log.error("Failed to prune code template history for {}", codeTemplateId, e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    // ========== Deleted Item Methods ==========
+
+    public void saveDeletedChannel(Channel channel, int userId) {
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("channelId", channel.getId());
+            params.put("name", channel.getName());
+            params.put("userId", userId);
+            params.put("dateDeleted", new Timestamp(System.currentTimeMillis()));
+            params.put("content", serializer.serialize(channel));
+
+            SqlConfig.getInstance().getSqlSessionManager().insert(stmt("insertDeletedChannel"), params);
+            log.info("Saved deleted channel snapshot for {} ({})", channel.getName(), channel.getId());
+        } catch (Exception e) {
+            // Fail silent - don't block channel delete if snapshot save fails
+            log.error("Failed to save deleted channel snapshot for {}", channel.getId(), e);
+        }
+    }
+
+    public void saveDeletedCodeTemplate(CodeTemplate codeTemplate, int userId) {
+        try {
+            Map<String, Object> params = new HashMap<>();
+            params.put("codeTemplateId", codeTemplate.getId());
+            params.put("name", codeTemplate.getName());
+            params.put("userId", userId);
+            params.put("dateDeleted", new Timestamp(System.currentTimeMillis()));
+            params.put("content", serializer.serialize(codeTemplate));
+
+            SqlConfig.getInstance().getSqlSessionManager().insert(stmt("insertDeletedCodeTemplate"), params);
+            log.info("Saved deleted code template snapshot for {} ({})", codeTemplate.getName(), codeTemplate.getId());
+        } catch (Exception e) {
+            // Fail silent - don't block code template delete if snapshot save fails
+            log.error("Failed to save deleted code template snapshot for {}", codeTemplate.getId(), e);
+        }
+    }
+
+    public List<DeletedItemInfo> getDeletedChannels() {
+        List<DeletedItemInfo> items = new ArrayList<>();
+
+        try {
+            List<Map<String, Object>> results = SqlConfig.getInstance().getSqlSessionManager()
+                    .selectList(stmt("getDeletedChannels"));
+
+            for (Map<String, Object> row : results) {
+                DeletedItemInfo info = new DeletedItemInfo();
+                info.setId((Long) row.get("id"));
+                info.setItemId((String) row.get("channelId"));
+                info.setName((String) row.get("name"));
+                info.setDeletedBy(getUserName((Integer) row.get("userId")));
+                Timestamp ts = (Timestamp) row.get("dateDeleted");
+                info.setDateDeleted(ts != null ? ts.getTime() : 0L);
+                items.add(info);
+            }
+        } catch (Exception e) {
+            log.error("Failed to get deleted channels", e);
+            throw new RuntimeException(e);
+        }
+
+        return items;
+    }
+
+    public List<DeletedItemInfo> getDeletedCodeTemplates() {
+        List<DeletedItemInfo> items = new ArrayList<>();
+
+        try {
+            List<Map<String, Object>> results = SqlConfig.getInstance().getSqlSessionManager()
+                    .selectList(stmt("getDeletedCodeTemplates"));
+
+            for (Map<String, Object> row : results) {
+                DeletedItemInfo info = new DeletedItemInfo();
+                info.setId((Long) row.get("id"));
+                info.setItemId((String) row.get("codeTemplateId"));
+                info.setName((String) row.get("name"));
+                info.setDeletedBy(getUserName((Integer) row.get("userId")));
+                Timestamp ts = (Timestamp) row.get("dateDeleted");
+                info.setDateDeleted(ts != null ? ts.getTime() : 0L);
+                items.add(info);
+            }
+        } catch (Exception e) {
+            log.error("Failed to get deleted code templates", e);
+            throw new RuntimeException(e);
+        }
+
+        return items;
+    }
+
+    public String getDeletedChannelContent(long id) {
+        try {
+            return SqlConfig.getInstance().getSqlSessionManager()
+                    .selectOne(stmt("getDeletedChannelContent"), id);
+        } catch (Exception e) {
+            log.error("Failed to get deleted channel content for id {}", id, e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String getDeletedCodeTemplateContent(long id) {
+        try {
+            return SqlConfig.getInstance().getSqlSessionManager()
+                    .selectOne(stmt("getDeletedCodeTemplateContent"), id);
+        } catch (Exception e) {
+            log.error("Failed to get deleted code template content for id {}", id, e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    public DeletedItemInfo getDeletedChannelInfo(long id) {
+        try {
+            Map<String, Object> row = SqlConfig.getInstance().getSqlSessionManager()
+                    .selectOne(stmt("getDeletedChannelInfoById"), id);
+            if (row == null) return null;
+
+            DeletedItemInfo info = new DeletedItemInfo();
+            info.setId((Long) row.get("id"));
+            info.setItemId((String) row.get("channelId"));
+            info.setName((String) row.get("name"));
+            info.setDeletedBy(getUserName((Integer) row.get("userId")));
+            Timestamp ts = (Timestamp) row.get("dateDeleted");
+            info.setDateDeleted(ts != null ? ts.getTime() : 0L);
+            return info;
+        } catch (Exception e) {
+            log.error("Failed to get deleted channel info for id {}", id, e);
+            return null;
+        }
+    }
+
+    public DeletedItemInfo getDeletedCodeTemplateInfo(long id) {
+        try {
+            Map<String, Object> row = SqlConfig.getInstance().getSqlSessionManager()
+                    .selectOne(stmt("getDeletedCodeTemplateInfoById"), id);
+            if (row == null) return null;
+
+            DeletedItemInfo info = new DeletedItemInfo();
+            info.setId((Long) row.get("id"));
+            info.setItemId((String) row.get("codeTemplateId"));
+            info.setName((String) row.get("name"));
+            info.setDeletedBy(getUserName((Integer) row.get("userId")));
+            Timestamp ts = (Timestamp) row.get("dateDeleted");
+            info.setDateDeleted(ts != null ? ts.getTime() : 0L);
+            return info;
+        } catch (Exception e) {
+            log.error("Failed to get deleted code template info for id {}", id, e);
+            return null;
+        }
+    }
+
+    public void purgeDeletedChannel(long id) {
+        try {
+            SqlConfig.getInstance().getSqlSessionManager()
+                    .delete(stmt("purgeDeletedChannel"), id);
+            log.info("Purged deleted channel snapshot id {}", id);
+        } catch (Exception e) {
+            log.error("Failed to purge deleted channel id {}", id, e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void purgeDeletedCodeTemplate(long id) {
+        try {
+            SqlConfig.getInstance().getSqlSessionManager()
+                    .delete(stmt("purgeDeletedCodeTemplate"), id);
+            log.info("Purged deleted code template snapshot id {}", id);
+        } catch (Exception e) {
+            log.error("Failed to purge deleted code template id {}", id, e);
             throw new RuntimeException(e);
         }
     }
