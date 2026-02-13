@@ -136,8 +136,7 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
             log.debug("reverted Channel {} to revision {}", channelId, revision);
 
             Map<String, String> attributes = new LinkedHashMap<>();
-            attributes.put("Channel", channel.getName());
-            attributes.put("Channel ID", channelId);
+            attributes.put("channel", "Channel[id=" + channelId + ",name=" + channel.getName() + "]");
             attributes.put("Reverted to revision", String.valueOf(revisionNumber));
             eventController.dispatchEvent(new ServerEvent(serverId, PLUGIN_NAME, Level.INFORMATION, Outcome.SUCCESS, attributes));
 
@@ -201,8 +200,7 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
             } catch (Exception ignore) {}
 
             Map<String, String> attributes = new LinkedHashMap<>();
-            attributes.put("Channel", channelName);
-            attributes.put("Channel ID", channelId);
+            attributes.put("channel", "Channel[id=" + channelId + ",name=" + channelName + "]");
             attributes.put("Revisions pruned", String.valueOf(deleted));
             eventController.dispatchEvent(new ServerEvent(serverId, PLUGIN_NAME, Level.INFORMATION, Outcome.SUCCESS, attributes));
 
@@ -269,8 +267,9 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
             repo.purgeDeletedChannel(id);
 
             Map<String, String> attributes = new LinkedHashMap<>();
-            attributes.put("Channel", info != null ? info.getName() : "Unknown");
-            attributes.put("Channel ID", info != null ? info.getItemId() : "Unknown");
+            String chId = info != null ? info.getItemId() : "Unknown";
+            String chName = info != null ? info.getName() : "Unknown";
+            attributes.put("channel", "Channel[id=" + chId + ",name=" + chName + "]");
             eventController.dispatchEvent(new ServerEvent(serverId, PLUGIN_NAME, Level.INFORMATION, Outcome.SUCCESS, attributes));
 
             return true;

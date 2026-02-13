@@ -5,6 +5,8 @@ package com.diridium;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.FileWriter;
 import java.text.SimpleDateFormat;
@@ -53,6 +55,7 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
     private DeletedItemTableModel model;
     private List<DeletedItemInfo> allItems = Collections.emptyList();
     private JComboBox<String> filterCombo;
+    private JButton btnViewXml;
     private JButton btnDiff;
     private JButton btnDownload;
     private JButton btnPurge;
@@ -86,12 +89,26 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
             }
         });
 
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && table.getSelectedRowCount() == 1) {
+                    viewXml();
+                }
+            }
+        });
+
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 
         buttonPanel.add(new JLabel("Show:"));
         filterCombo = new JComboBox<>(new String[]{FILTER_ALL, FILTER_CHANNELS, FILTER_CODE_TEMPLATES});
         filterCombo.addActionListener(e -> applyFilter());
         buttonPanel.add(filterCombo);
+
+        btnViewXml = new JButton("View XML");
+        btnViewXml.setEnabled(false);
+        btnViewXml.addActionListener(e -> viewXml());
+        buttonPanel.add(btnViewXml);
 
         btnDiff = new JButton("Show Diff");
         btnDiff.setEnabled(false);
@@ -186,6 +203,7 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
         }
         model = new DeletedItemTableModel(filtered);
         table.setModel(model);
+        btnViewXml.setEnabled(false);
         btnDiff.setEnabled(false);
         btnDownload.setEnabled(false);
         btnPurge.setEnabled(false);
@@ -199,6 +217,7 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
 
     private void updateButtonStates() {
         int count = table.getSelectedRowCount();
+        btnViewXml.setEnabled(count == 1);
         btnDownload.setEnabled(count == 1);
         btnPurge.setEnabled(count == 1);
 
@@ -261,6 +280,55 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
                 }
             } else {
                 DiffWindow dw = DiffWindow.create(title, leftLabel, rightLabel, left, right);
+                dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
+                dw.setVisible(true);
+            }
+        } catch (Exception e) {
+            PlatformUI.MIRTH_FRAME.alertThrowable(PlatformUI.MIRTH_FRAME, e);
+        }
+    }
+
+    private void viewXml() {
+        int row = table.getSelectedRow();
+        if (row < 0) return;
+
+        ChannelHistoryServletInterface svc = getServlet();
+        if (svc == null) return;
+
+        DeletedItemInfo info = model.getItemAt(row);
+        try {
+            String xml;
+            boolean isChannel = DeletedItemInfo.TYPE_CHANNEL.equals(info.getType());
+
+            if (isChannel) {
+                xml = svc.getDeletedChannelContent(info.getId());
+            } else {
+                xml = svc.getDeletedCodeTemplateContent(info.getId());
+            }
+
+            if (xml == null) {
+                PlatformUI.MIRTH_FRAME.alertError(this, "No content found for this deleted item.");
+                return;
+            }
+
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+            String label = info.getName() + " (deleted " + sdf.format(new Date(info.getDateDeleted())) + ")";
+            String title = "Deleted " + info.getType() + " - " + info.getName();
+
+            if (isChannel) {
+                try {
+                    ChannelXmlDecomposer.DecomposeResult result = ChannelXmlDecomposer.decomposeWithNames(xml);
+                    DecomposedDiffWindow dw = DecomposedDiffWindow.createViewOnly(null, title, label, result, xml);
+                    dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
+                    dw.setVisible(true);
+                } catch (Exception decompositionEx) {
+                    log.warn("Channel decomposition failed, falling back to raw view: {}", decompositionEx.getMessage(), decompositionEx);
+                    DiffWindow dw = DiffWindow.createViewOnly(title, label, xml);
+                    dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
+                    dw.setVisible(true);
+                }
+            } else {
+                DiffWindow dw = DiffWindow.createViewOnly(title, label, xml);
                 dw.setSize(PlatformUI.MIRTH_FRAME.getWidth() - 10, PlatformUI.MIRTH_FRAME.getHeight() - 10);
                 dw.setVisible(true);
             }
