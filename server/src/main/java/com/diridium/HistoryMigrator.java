@@ -4,6 +4,10 @@
 
 package com.diridium;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+
 import com.mirth.connect.server.migration.Migrator;
 import com.mirth.connect.model.util.MigrationException;
 
@@ -12,7 +16,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Migrator for creating history tables used by the simple-channel-history plugin.
- * Creates channel_history and code_template_history tables on first startup.
+ * Creates channel_history, code_template_history, deleted_channel, and
+ * deleted_code_template tables on first startup.
  */
 public class HistoryMigrator extends Migrator {
 
@@ -20,20 +25,31 @@ public class HistoryMigrator extends Migrator {
 
     @Override
     public void migrate() throws MigrationException {
-        // Use absolute path (starts with /) to load from classpath root
-        String scriptName = "/" + getDatabaseType() + "-history-tables.sql";
-        log.info("Running history table migration script: {}", scriptName);
+        executeScriptSafely("/" + getDatabaseType() + "-history-tables.sql", "History tables");
+        executeScriptSafely("/" + getDatabaseType() + "-deleted-tables.sql", "Deleted item tables");
+    }
+
+    private void executeScriptSafely(String scriptName, String description) {
         try {
             executeScript(scriptName);
-            log.info("History tables created successfully");
+            log.info("{} created successfully", description);
         } catch (Exception e) {
-            String msg = e.getMessage() != null ? e.getMessage().toLowerCase(java.util.Locale.ROOT) : "";
+            String msg = e.getMessage() != null ? e.getMessage().toLowerCase(Locale.ROOT) : "";
             if (msg.contains("already exist")) {
-                log.info("History tables already exist, skipping creation");
+                log.info("{} already exist, skipping", description);
             } else {
-                log.warn("History table migration may have failed: {}", e.getMessage(), e);
+                log.warn("{} migration may have failed: {}", description, e.getMessage(), e);
             }
         }
+    }
+
+    @Override
+    public List<String> getUninstallStatements() throws MigrationException {
+        return Arrays.asList(
+                "DROP TABLE channel_history",
+                "DROP TABLE code_template_history",
+                "DROP TABLE deleted_channel",
+                "DROP TABLE deleted_code_template");
     }
 
     @Override

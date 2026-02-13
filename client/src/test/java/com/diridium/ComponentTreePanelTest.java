@@ -4,7 +4,9 @@
 package com.diridium;
 
 import static org.junit.Assert.*;
+import static org.junit.Assume.assumeFalse;
 
+import java.awt.GraphicsEnvironment;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -151,6 +153,7 @@ public class ComponentTreePanelTest {
                 new DecomposedComponent("Destination [1]/Configuration", "Configuration",
                         "config", DecomposedComponent.Category.CONNECTOR_CONFIGURATION, "Destination [1]"));
 
+        assumeFalse("Skipping Swing test in headless environment", GraphicsEnvironment.isHeadless());
         ComponentTreePanel panel = new ComponentTreePanel(left, right);
         // Panel detects the reorder — changed count should reflect that steps are modified
         // (2 steps show as modified because content at each position differs)
@@ -176,6 +179,7 @@ public class ComponentTreePanelTest {
                 new DecomposedComponent("Destination [1]/Configuration", "Configuration",
                         "config", DecomposedComponent.Category.CONNECTOR_CONFIGURATION, "Destination [1]"));
 
+        assumeFalse("Skipping Swing test in headless environment", GraphicsEnvironment.isHeadless());
         ComponentTreePanel panel = new ComponentTreePanel(left, right);
         // Content genuinely changed — should show 1 changed, NOT be flagged as reorder
         assertEquals(1, panel.getChangedCount());

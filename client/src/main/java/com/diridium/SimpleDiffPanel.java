@@ -59,6 +59,28 @@ public class SimpleDiffPanel extends JPanel {
     private StringBuilder leftLineNumBuilder = new StringBuilder();
     private StringBuilder rightLineNumBuilder = new StringBuilder();
 
+    /**
+     * View-only constructor — single scroll pane with line numbers, no diff.
+     */
+    public SimpleDiffPanel(String content) {
+        setLayout(new BorderLayout());
+
+        leftPane = createTextPane();
+        leftLineNumbers = createLineNumberArea();
+
+        Dimension smallSize = new Dimension(0, 0);
+        leftScrollPane = new JScrollPane(leftPane,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        leftScrollPane.setRowHeaderView(leftLineNumbers);
+        leftScrollPane.getViewport().setBackground(Color.WHITE);
+        leftScrollPane.setMinimumSize(smallSize);
+        leftScrollPane.setPreferredSize(smallSize);
+
+        add(leftScrollPane, BorderLayout.CENTER);
+        displayContent(content);
+    }
+
     public SimpleDiffPanel(String leftContent, String rightContent) {
         setLayout(new BorderLayout());
 
@@ -358,6 +380,30 @@ public class SimpleDiffPanel extends JPanel {
         // Scroll to top
         leftPane.setCaretPosition(0);
         rightPane.setCaretPosition(0);
+    }
+
+    private void displayContent(String content) {
+        List<String> lines = content.isEmpty() ? List.of() : Arrays.asList(content.split("\n", -1));
+
+        StyledDocument doc = leftPane.getStyledDocument();
+        Style normalStyle = doc.addStyle("normal", null);
+
+        try {
+            for (int i = 0; i < lines.size(); i++) {
+                appendLine(leftPane, lines.get(i), normalStyle, null, leftLineNumBuilder, i + 1);
+            }
+        } catch (BadLocationException e) {
+            e.printStackTrace();
+        }
+
+        leftLineNumbers.setText(leftLineNumBuilder.toString());
+
+        int digits = String.valueOf(lines.size()).length();
+        FontMetrics fm = leftLineNumbers.getFontMetrics(leftLineNumbers.getFont());
+        int width = fm.charWidth('0') * (Math.max(digits, 4) + 2);
+        leftLineNumbers.setPreferredSize(new Dimension(width, leftLineNumbers.getPreferredSize().height));
+
+        leftPane.setCaretPosition(0);
     }
 
     private void appendLine(DiffTextPane pane, String line, Style style, Color bgColor,

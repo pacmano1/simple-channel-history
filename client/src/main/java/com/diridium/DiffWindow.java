@@ -58,10 +58,29 @@ public class DiffWindow extends JDialog {
         return dd;
     }
 
+    public static DiffWindow createViewOnly(String title, String label, String content) {
+        DiffWindow dd = new DiffWindow(null, title, label, null);
+        dd.buildViewOnlyContent(content);
+        return dd;
+    }
+
     private void buildContent(String leftStrContent, String rightStrContent) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.add(createLabelPanel(), BorderLayout.NORTH);
         panel.add(new SimpleDiffPanel(leftStrContent, rightStrContent), BorderLayout.CENTER);
+        add(panel);
+    }
+
+    private void buildViewOnlyContent(String content) {
+        JPanel panel = new JPanel(new BorderLayout());
+
+        JLabel lbl = new JLabel(leftLabel, JLabel.CENTER);
+        lbl.setFont(new Font(lbl.getFont().getName(), Font.BOLD, 14));
+        JPanel labelPanel = new JPanel(new GridLayout(1, 1));
+        labelPanel.add(lbl);
+
+        panel.add(labelPanel, BorderLayout.NORTH);
+        panel.add(new SimpleDiffPanel(content), BorderLayout.CENTER);
         add(panel);
     }
 

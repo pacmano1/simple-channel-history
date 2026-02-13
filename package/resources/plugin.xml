@@ -20,9 +20,17 @@
     <clientClasses>
         <string>com.diridium.ChannelHistoryPlugin</string>
         <string>com.diridium.CodeTemplateHistoryPlugin</string>
+        <string>com.diridium.DeletedItemsSettingsPanelPlugin</string>
     </clientClasses>
 
     <migratorClass>com.diridium.HistoryMigrator</migratorClass>
+
+    <sqlMapConfigs>
+        <entry>
+            <string>all</string>
+            <string>sqlmap.xml</string>
+        </entry>
+    </sqlMapConfigs>
 
     <library type="CLIENT" path="java-diff-utils-4.12.jar" />
 

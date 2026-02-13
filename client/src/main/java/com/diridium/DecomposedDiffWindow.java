@@ -32,6 +32,7 @@ public class DecomposedDiffWindow extends JDialog {
     private final Map<String, String> rightGroupDisplayNames;
     private final String leftRawXml;
     private final String rightRawXml;
+    private final boolean viewOnly;
     private JPanel diffContainer;
     private CardLayout cardLayout;
     private JPanel cardPanel;
@@ -43,7 +44,8 @@ public class DecomposedDiffWindow extends JDialog {
                                   Map<String, DecomposedComponent> rightComponents,
                                   Map<String, String> leftGroupDisplayNames,
                                   Map<String, String> rightGroupDisplayNames,
-                                  String leftRawXml, String rightRawXml) {
+                                  String leftRawXml, String rightRawXml,
+                                  boolean viewOnly) {
         super(parent, title, true);
         this.leftComponents = leftComponents;
         this.rightComponents = rightComponents;
@@ -51,6 +53,7 @@ public class DecomposedDiffWindow extends JDialog {
         this.rightGroupDisplayNames = rightGroupDisplayNames;
         this.leftRawXml = leftRawXml;
         this.rightRawXml = rightRawXml;
+        this.viewOnly = viewOnly;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         // Escape key closes dialog
@@ -74,20 +77,36 @@ public class DecomposedDiffWindow extends JDialog {
         return new DecomposedDiffWindow(parent, title, leftLabel, rightLabel,
                 leftResult.getComponents(), rightResult.getComponents(),
                 leftResult.getGroupDisplayNames(), rightResult.getGroupDisplayNames(),
-                leftRawXml, rightRawXml);
+                leftRawXml, rightRawXml, false);
+    }
+
+    public static DecomposedDiffWindow createViewOnly(java.awt.Dialog parent, String title,
+            String label, ChannelXmlDecomposer.DecomposeResult result, String rawXml) {
+        return new DecomposedDiffWindow(parent, title, label, null,
+                result.getComponents(), result.getComponents(),
+                result.getGroupDisplayNames(), result.getGroupDisplayNames(),
+                rawXml, null, true);
     }
 
     private void buildContent(String leftLabel, String rightLabel) {
         // Revision labels — placed above the diff container so they align with left/right panes
-        JPanel labelPanel = new JPanel(new GridLayout(1, 2));
-        JLabel lblLeft = new JLabel(leftLabel, JLabel.CENTER);
-        Font labelFont = new Font(lblLeft.getFont().getName(), Font.BOLD, 14);
-        lblLeft.setFont(labelFont);
-        labelPanel.add(lblLeft);
+        JPanel labelPanel;
+        if (viewOnly) {
+            labelPanel = new JPanel(new GridLayout(1, 1));
+            JLabel lbl = new JLabel(leftLabel, JLabel.CENTER);
+            lbl.setFont(new Font(lbl.getFont().getName(), Font.BOLD, 14));
+            labelPanel.add(lbl);
+        } else {
+            labelPanel = new JPanel(new GridLayout(1, 2));
+            JLabel lblLeft = new JLabel(leftLabel, JLabel.CENTER);
+            Font labelFont = new Font(lblLeft.getFont().getName(), Font.BOLD, 14);
+            lblLeft.setFont(labelFont);
+            labelPanel.add(lblLeft);
 
-        JLabel lblRight = new JLabel(rightLabel, JLabel.CENTER);
-        lblRight.setFont(labelFont);
-        labelPanel.add(lblRight);
+            JLabel lblRight = new JLabel(rightLabel, JLabel.CENTER);
+            lblRight.setFont(labelFont);
+            labelPanel.add(lblRight);
+        }
 
         // --- Decomposed view ---
         ComponentTreePanel treePanel = new ComponentTreePanel(leftComponents, rightComponents,
@@ -140,7 +159,9 @@ public class DecomposedDiffWindow extends JDialog {
         if (showingDecomposed) {
             // Lazily create the raw view on first toggle
             if (cardPanel.getComponentCount() < 2) {
-                SimpleDiffPanel rawDiff = new SimpleDiffPanel(leftRawXml, rightRawXml);
+                SimpleDiffPanel rawDiff = viewOnly
+                        ? new SimpleDiffPanel(leftRawXml)
+                        : new SimpleDiffPanel(leftRawXml, rightRawXml);
                 cardPanel.add(rawDiff, VIEW_RAW);
             }
             cardLayout.show(cardPanel, VIEW_RAW);
@@ -156,20 +177,19 @@ public class DecomposedDiffWindow extends JDialog {
         diffContainer.removeAll();
 
         if (key != null) {
-            String leftContent = "";
-            String rightContent = "";
+            DecomposedComponent comp = leftComponents.get(key);
+            String content = comp != null ? comp.getContent() : "";
 
-            DecomposedComponent leftComp = leftComponents.get(key);
-            DecomposedComponent rightComp = rightComponents.get(key);
-
-            if (leftComp != null) {
-                leftContent = leftComp.getContent();
+            if (viewOnly) {
+                diffContainer.add(new SimpleDiffPanel(content), BorderLayout.CENTER);
+            } else {
+                String rightContent = "";
+                DecomposedComponent rightComp = rightComponents.get(key);
+                if (rightComp != null) {
+                    rightContent = rightComp.getContent();
+                }
+                diffContainer.add(new SimpleDiffPanel(content, rightContent), BorderLayout.CENTER);
             }
-            if (rightComp != null) {
-                rightContent = rightComp.getContent();
-            }
-
-            diffContainer.add(new SimpleDiffPanel(leftContent, rightContent), BorderLayout.CENTER);
         }
 
         diffContainer.revalidate();

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- SPDX-FileCopyrightText: Copyright 2025-2026 Diridium Technologies Inc. -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "conf/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="ChannelHistory">
+
+    <!-- ========== Result Maps ========== -->
+
+    <resultMap id="historyResult" type="map">
+        <result property="id" column="id" javaType="Long" />
+        <result property="revision" column="revision" javaType="Integer" />
+        <result property="userId" column="user_id" javaType="Integer" />
+        <result property="dateCreated" column="date_created" javaType="java.sql.Timestamp" />
+    </resultMap>
+
+    <resultMap id="deletedChannelResult" type="map">
+        <result property="id" column="id" javaType="Long" />
+        <result property="channelId" column="channel_id" javaType="String" />
+        <result property="name" column="name" javaType="String" />
+        <result property="userId" column="user_id" javaType="Integer" />
+        <result property="dateDeleted" column="date_deleted" javaType="java.sql.Timestamp" />
+    </resultMap>
+
+    <resultMap id="deletedCodeTemplateResult" type="map">
+        <result property="id" column="id" javaType="Long" />
+        <result property="codeTemplateId" column="code_template_id" javaType="String" />
+        <result property="name" column="name" javaType="String" />
+        <result property="userId" column="user_id" javaType="Integer" />
+        <result property="dateDeleted" column="date_deleted" javaType="java.sql.Timestamp" />
+    </resultMap>
+
+    <!-- ========== Channel History ========== -->
+
+    <insert id="insertChannelHistory" parameterType="map">
+        INSERT INTO channel_history (revision, channel_id, user_id, date_created, channel)
+        VALUES (#{revision}, #{channelId}, #{userId}, #{dateCreated}, #{channel})
+    </insert>
+
+    <select id="getChannelHistory" parameterType="String" resultMap="historyResult">
+        SELECT id, revision, user_id, date_created
+        FROM channel_history
+        WHERE channel_id = #{value}
+        ORDER BY id DESC
+    </select>
+
+    <select id="getChannelContent" parameterType="map" resultType="String">
+        SELECT channel
+        FROM channel_history
+        WHERE id = #{id} AND channel_id = #{channelId}
+    </select>
+
+    <select id="getChannelRevisionNumber" parameterType="map" resultType="Integer">
+        SELECT revision
+        FROM channel_history
+        WHERE id = #{id} AND channel_id = #{channelId}
+    </select>
+
+    <delete id="deleteChannelHistory" parameterType="String">
+        DELETE FROM channel_history
+        WHERE channel_id = #{value}
+    </delete>
+
+    <delete id="pruneChannelHistory" parameterType="map">
+        DELETE FROM channel_history
+        WHERE channel_id = #{channelId} AND id &lt; #{id}
+    </delete>
+
+    <!-- ========== Code Template History ========== -->
+
+    <insert id="insertCodeTemplateHistory" parameterType="map">
+        INSERT INTO code_template_history (revision, code_template_id, user_id, date_created, code_template)
+        VALUES (#{revision}, #{codeTemplateId}, #{userId}, #{dateCreated}, #{codeTemplate})
+    </insert>
+
+    <select id="getCodeTemplateHistory" parameterType="String" resultMap="historyResult">
+        SELECT id, revision, user_id, date_created
+        FROM code_template_history
+        WHERE code_template_id = #{value}
+        ORDER BY id DESC
+    </select>
+
+    <select id="getCodeTemplateContent" parameterType="map" resultType="String">
+        SELECT code_template
+        FROM code_template_history
+        WHERE id = #{id} AND code_template_id = #{codeTemplateId}
+    </select>
+
+    <delete id="deleteCodeTemplateHistory" parameterType="String">
+        DELETE FROM code_template_history
+        WHERE code_template_id = #{value}
+    </delete>
+
+    <delete id="pruneCodeTemplateHistory" parameterType="map">
+        DELETE FROM code_template_history
+        WHERE code_template_id = #{codeTemplateId} AND id &lt; #{id}
+    </delete>
+
+    <!-- ========== Deleted Channels ========== -->
+
+    <insert id="insertDeletedChannel" parameterType="map">
+        INSERT INTO deleted_channel (channel_id, name, user_id, date_deleted, content)
+        VALUES (#{channelId}, #{name}, #{userId}, #{dateDeleted}, #{content})
+    </insert>
+
+    <select id="getDeletedChannels" resultMap="deletedChannelResult">
+        SELECT id, channel_id, name, user_id, date_deleted
+        FROM deleted_channel
+        ORDER BY date_deleted DESC
+    </select>
+
+    <select id="getDeletedChannelContent" parameterType="Long" resultType="String">
+        SELECT content
+        FROM deleted_channel
+        WHERE id = #{value}
+    </select>
+
+    <select id="getDeletedChannelInfoById" parameterType="Long" resultMap="deletedChannelResult">
+        SELECT id, channel_id, name, user_id, date_deleted
+        FROM deleted_channel
+        WHERE id = #{value}
+    </select>
+
+    <delete id="purgeDeletedChannel" parameterType="Long">
+        DELETE FROM deleted_channel
+        WHERE id = #{value}
+    </delete>
+
+    <!-- ========== Deleted Code Templates ========== -->
+
+    <insert id="insertDeletedCodeTemplate" parameterType="map">
+        INSERT INTO deleted_code_template (code_template_id, name, user_id, date_deleted, content)
+        VALUES (#{codeTemplateId}, #{name}, #{userId}, #{dateDeleted}, #{content})
+    </insert>
+
+    <select id="getDeletedCodeTemplates" resultMap="deletedCodeTemplateResult">
+        SELECT id, code_template_id, name, user_id, date_deleted
+        FROM deleted_code_template
+        ORDER BY date_deleted DESC
+    </select>
+
+    <select id="getDeletedCodeTemplateContent" parameterType="Long" resultType="String">
+        SELECT content
+        FROM deleted_code_template
+        WHERE id = #{value}
+    </select>
+
+    <select id="getDeletedCodeTemplateInfoById" parameterType="Long" resultMap="deletedCodeTemplateResult">
+        SELECT id, code_template_id, name, user_id, date_deleted
+        FROM deleted_code_template
+        WHERE id = #{value}
+    </select>
+
+    <delete id="purgeDeletedCodeTemplate" parameterType="Long">
+        DELETE FROM deleted_code_template
+        WHERE id = #{value}
+    </delete>
+
+</mapper>

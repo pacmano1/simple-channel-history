@@ -110,4 +110,50 @@ public interface ChannelHistoryServletInterface extends BaseServletInterface {
     @MirthOperation(name = "pruneCodeTemplateHistory", display = "Prune older code template revisions", permission = Permissions.CODE_TEMPLATES_MANAGE, type = ExecuteType.SYNC)
     int pruneCodeTemplateHistory(@Param("codeTemplateId") @Parameter(description = "The ID of the CodeTemplate", required = true) @QueryParam("codeTemplateId") String codeTemplateId,
             @Param("revision") @Parameter(description = "Keep this revision and newer, delete older", required = true) @QueryParam("revision") String revision) throws ClientException;
+
+    // ========== Deleted Item Endpoints ==========
+
+    @GET
+    @Path("/deletedChannels")
+    @Operation(summary = "Returns a list of all deleted channel snapshots")
+    @ApiResponse(content = {
+            @Content(mediaType = MediaType.APPLICATION_XML),
+            @Content(mediaType = MediaType.APPLICATION_JSON) })
+    @MirthOperation(name = "getDeletedChannels", display = "Get deleted channel snapshots", permission = Permissions.CHANNELS_MANAGE, type = ExecuteType.ASYNC, auditable = false)
+    List<DeletedItemInfo> getDeletedChannels() throws ClientException;
+
+    @GET
+    @Path("/deletedChannelContent")
+    @Produces(MediaType.APPLICATION_XML)
+    @Operation(summary = "Returns the XML content of a deleted channel snapshot")
+    @MirthOperation(name = "getDeletedChannelContent", display = "Get deleted channel content", permission = Permissions.CHANNELS_MANAGE, type = ExecuteType.SYNC, auditable = false)
+    String getDeletedChannelContent(@Param("id") @Parameter(description = "The database row ID of the deleted channel snapshot", required = true) @QueryParam("id") long id) throws ClientException;
+
+    @POST
+    @Path("/purgeDeletedChannel")
+    @Operation(summary = "Permanently remove a deleted channel snapshot")
+    @MirthOperation(name = "purgeDeletedChannel", display = "Purge deleted channel snapshot", permission = Permissions.CHANNELS_MANAGE, type = ExecuteType.SYNC)
+    boolean purgeDeletedChannel(@Param("id") @Parameter(description = "The database row ID of the deleted channel snapshot", required = true) @QueryParam("id") long id) throws ClientException;
+
+    @GET
+    @Path("/deletedCodeTemplates")
+    @Operation(summary = "Returns a list of all deleted code template snapshots")
+    @ApiResponse(content = {
+            @Content(mediaType = MediaType.APPLICATION_XML),
+            @Content(mediaType = MediaType.APPLICATION_JSON) })
+    @MirthOperation(name = "getDeletedCodeTemplates", display = "Get deleted code template snapshots", permission = Permissions.CODE_TEMPLATES_MANAGE, type = ExecuteType.ASYNC, auditable = false)
+    List<DeletedItemInfo> getDeletedCodeTemplates() throws ClientException;
+
+    @GET
+    @Path("/deletedCodeTemplateContent")
+    @Produces(MediaType.APPLICATION_XML)
+    @Operation(summary = "Returns the XML content of a deleted code template snapshot")
+    @MirthOperation(name = "getDeletedCodeTemplateContent", display = "Get deleted code template content", permission = Permissions.CODE_TEMPLATES_MANAGE, type = ExecuteType.SYNC, auditable = false)
+    String getDeletedCodeTemplateContent(@Param("id") @Parameter(description = "The database row ID of the deleted code template snapshot", required = true) @QueryParam("id") long id) throws ClientException;
+
+    @POST
+    @Path("/purgeDeletedCodeTemplate")
+    @Operation(summary = "Permanently remove a deleted code template snapshot")
+    @MirthOperation(name = "purgeDeletedCodeTemplate", display = "Purge deleted code template snapshot", permission = Permissions.CODE_TEMPLATES_MANAGE, type = ExecuteType.SYNC)
+    boolean purgeDeletedCodeTemplate(@Param("id") @Parameter(description = "The database row ID of the deleted code template snapshot", required = true) @QueryParam("id") long id) throws ClientException;
 }

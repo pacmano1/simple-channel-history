@@ -46,6 +46,7 @@ public class ChannelVersionController implements ChannelPlugin {
 
     @Override
     public void remove(Channel channel, ServerEventContext sec) {
+        repo.saveDeletedChannel(channel, sec.getUserId());
         repo.deleteChannelHistory(channel.getId());
     }
 

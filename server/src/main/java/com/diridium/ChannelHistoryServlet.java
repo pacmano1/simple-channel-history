@@ -5,7 +5,9 @@
 package com.diridium;
 
 import java.util.Calendar;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.Context;
@@ -14,12 +16,17 @@ import javax.ws.rs.core.SecurityContext;
 import com.mirth.connect.client.core.ClientException;
 import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.ChannelMetadata;
+import com.mirth.connect.model.ServerEvent;
+import com.mirth.connect.model.ServerEvent.Level;
+import com.mirth.connect.model.ServerEvent.Outcome;
 import com.mirth.connect.model.codetemplates.CodeTemplate;
 import com.mirth.connect.server.api.CheckAuthorizedChannelId;
 import com.mirth.connect.server.api.MirthServlet;
 import com.mirth.connect.server.controllers.ChannelController;
 import com.mirth.connect.server.controllers.CodeTemplateController;
+import com.mirth.connect.server.controllers.ConfigurationController;
 import com.mirth.connect.server.controllers.ControllerFactory;
+import com.mirth.connect.server.controllers.EventController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,12 +41,16 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
 
     private ChannelController channelController;
     private CodeTemplateController codeTemplateController;
+    private EventController eventController;
+    private String serverId;
 
     public ChannelHistoryServlet(@Context HttpServletRequest request, @Context SecurityContext sc) {
         super(request, sc, PLUGIN_NAME);
         repo = DatabaseHistoryRepository.getInstance();
         channelController = ChannelController.getInstance();
         codeTemplateController = ControllerFactory.getFactory().createCodeTemplateController();
+        eventController = ControllerFactory.getFactory().createEventController();
+        serverId = ConfigurationController.getInstance().getServerId();
     }
 
     @Override
@@ -123,6 +134,12 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
             channel.setDescription(newDesc.toString());
             boolean result = channelController.updateChannel(channel, context, true, Calendar.getInstance());
             log.debug("reverted Channel {} to revision {}", channelId, revision);
+
+            Map<String, String> attributes = new LinkedHashMap<>();
+            attributes.put("channel", "Channel[id=" + channelId + ",name=" + channel.getName() + "]");
+            attributes.put("Reverted to revision", String.valueOf(revisionNumber));
+            eventController.dispatchEvent(new ServerEvent(serverId, PLUGIN_NAME, Level.INFORMATION, Outcome.SUCCESS, attributes));
+
             return result;
         }
         catch (Exception e) {
@@ -175,6 +192,18 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
         try {
             int deleted = repo.pruneChannelHistoryOlderThan(channelId, revision);
             log.info("Pruned {} older revisions for channel {}", deleted, channelId);
+
+            String channelName = "Unknown";
+            try {
+                Channel ch = channelController.getChannelById(channelId);
+                if (ch != null) channelName = ch.getName();
+            } catch (Exception ignore) {}
+
+            Map<String, String> attributes = new LinkedHashMap<>();
+            attributes.put("channel", "Channel[id=" + channelId + ",name=" + channelName + "]");
+            attributes.put("Revisions pruned", String.valueOf(deleted));
+            eventController.dispatchEvent(new ServerEvent(serverId, PLUGIN_NAME, Level.INFORMATION, Outcome.SUCCESS, attributes));
+
             return deleted;
         }
         catch (Exception e) {
@@ -188,10 +217,102 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
         try {
             int deleted = repo.pruneCodeTemplateHistoryOlderThan(codeTemplateId, revision);
             log.info("Pruned {} older revisions for code template {}", deleted, codeTemplateId);
+
+            String templateName = "Unknown";
+            try {
+                CodeTemplate ct = codeTemplateController.getCodeTemplateById(codeTemplateId);
+                if (ct != null) templateName = ct.getName();
+            } catch (Exception ignore) {}
+
+            Map<String, String> attributes = new LinkedHashMap<>();
+            attributes.put("Code Template", templateName);
+            attributes.put("Code Template ID", codeTemplateId);
+            attributes.put("Revisions pruned", String.valueOf(deleted));
+            eventController.dispatchEvent(new ServerEvent(serverId, PLUGIN_NAME, Level.INFORMATION, Outcome.SUCCESS, attributes));
+
             return deleted;
         }
         catch (Exception e) {
             log.warn("failed to prune code template history for {} at revision {}", codeTemplateId, revision, e);
+            throw new ClientException(e);
+        }
+    }
+
+    // ========== Deleted Item Endpoints ==========
+
+    @Override
+    public List<DeletedItemInfo> getDeletedChannels() throws ClientException {
+        try {
+            return repo.getDeletedChannels();
+        } catch (Exception e) {
+            log.warn("failed to get deleted channels", e);
+            throw new ClientException(e);
+        }
+    }
+
+    @Override
+    public String getDeletedChannelContent(long id) throws ClientException {
+        try {
+            return repo.getDeletedChannelContent(id);
+        } catch (Exception e) {
+            log.warn("failed to get deleted channel content for id {}", id, e);
+            throw new ClientException(e);
+        }
+    }
+
+    @Override
+    public boolean purgeDeletedChannel(long id) throws ClientException {
+        try {
+            DeletedItemInfo info = repo.getDeletedChannelInfo(id);
+            repo.purgeDeletedChannel(id);
+
+            Map<String, String> attributes = new LinkedHashMap<>();
+            String chId = info != null ? info.getItemId() : "Unknown";
+            String chName = info != null ? info.getName() : "Unknown";
+            attributes.put("channel", "Channel[id=" + chId + ",name=" + chName + "]");
+            eventController.dispatchEvent(new ServerEvent(serverId, PLUGIN_NAME, Level.INFORMATION, Outcome.SUCCESS, attributes));
+
+            return true;
+        } catch (Exception e) {
+            log.warn("failed to purge deleted channel id {}", id, e);
+            throw new ClientException(e);
+        }
+    }
+
+    @Override
+    public List<DeletedItemInfo> getDeletedCodeTemplates() throws ClientException {
+        try {
+            return repo.getDeletedCodeTemplates();
+        } catch (Exception e) {
+            log.warn("failed to get deleted code templates", e);
+            throw new ClientException(e);
+        }
+    }
+
+    @Override
+    public String getDeletedCodeTemplateContent(long id) throws ClientException {
+        try {
+            return repo.getDeletedCodeTemplateContent(id);
+        } catch (Exception e) {
+            log.warn("failed to get deleted code template content for id {}", id, e);
+            throw new ClientException(e);
+        }
+    }
+
+    @Override
+    public boolean purgeDeletedCodeTemplate(long id) throws ClientException {
+        try {
+            DeletedItemInfo info = repo.getDeletedCodeTemplateInfo(id);
+            repo.purgeDeletedCodeTemplate(id);
+
+            Map<String, String> attributes = new LinkedHashMap<>();
+            attributes.put("Code Template", info != null ? info.getName() : "Unknown");
+            attributes.put("Code Template ID", info != null ? info.getItemId() : "Unknown");
+            eventController.dispatchEvent(new ServerEvent(serverId, PLUGIN_NAME, Level.INFORMATION, Outcome.SUCCESS, attributes));
+
+            return true;
+        } catch (Exception e) {
+            log.warn("failed to purge deleted code template id {}", id, e);
             throw new ClientException(e);
         }
     }
