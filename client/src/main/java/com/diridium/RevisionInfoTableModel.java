@@ -16,9 +16,9 @@ import javax.swing.table.AbstractTableModel;
  */
 public class RevisionInfoTableModel extends AbstractTableModel {
 
-    private List<RevisionInfo> revisions;
+    private final List<RevisionInfo> revisions;
 
-    private static DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private static final DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     private static final String[] columnNames = {"Revision", "User", "Date"};
 
@@ -43,26 +43,13 @@ public class RevisionInfoTableModel extends AbstractTableModel {
 
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
-        Object val = null;
         RevisionInfo r = revisions.get(rowIndex);
-
-        switch (columnIndex) {
-        case 0:
-            val = r.getShortHash();
-            break;
-
-        case 1:
-            val = r.getCommitterName();
-            break;
-
-        case 2:
-            val = formatTime(r.getTime());
-            break;
-
-        default:
-            throw new IllegalArgumentException("unknown column number " + columnIndex);
-        }
-        return val;
+        return switch (columnIndex) {
+            case 0 -> r.getShortHash();
+            case 1 -> r.getCommitterName();
+            case 2 -> formatTime(r.getTime());
+            default -> throw new IllegalArgumentException("unknown column number " + columnIndex);
+        };
     }
 
     public RevisionInfo getRevisionAt(int row) {

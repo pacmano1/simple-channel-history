@@ -8,10 +8,11 @@ import java.awt.FlowLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -64,7 +65,7 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
         super(tabName);
         ObjectXMLSerializer.getInstance().allowTypes(
                 Collections.emptyList(),
-                Arrays.asList(DeletedItemInfo.class.getPackage().getName() + ".**"),
+                Collections.singletonList(DeletedItemInfo.class.getPackage().getName() + ".**"),
                 Collections.emptyList());
         initComponents();
     }
@@ -363,7 +364,7 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
             int result = chooser.showSaveDialog(this);
             if (result == JFileChooser.APPROVE_OPTION) {
                 File file = chooser.getSelectedFile();
-                try (FileWriter writer = new FileWriter(file)) {
+                try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
                     writer.write(xml);
                     PlatformUI.MIRTH_FRAME.alertInformation(this, "XML saved to " + file.getAbsolutePath());
                 }
@@ -431,14 +432,14 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
             DeletedItemInfo info = items.get(rowIndex);
-            switch (columnIndex) {
-                case 0: return info.getType();
-                case 1: return info.getName();
-                case 2: return info.getItemId();
-                case 3: return info.getDeletedBy();
-                case 4: return df.format(new Date(info.getDateDeleted()));
-                default: throw new IllegalArgumentException("unknown column " + columnIndex);
-            }
+            return switch (columnIndex) {
+                case 0 -> info.getType();
+                case 1 -> info.getName();
+                case 2 -> info.getItemId();
+                case 3 -> info.getDeletedBy();
+                case 4 -> df.format(new Date(info.getDateDeleted()));
+                default -> throw new IllegalArgumentException("unknown column " + columnIndex);
+            };
         }
 
         DeletedItemInfo getItemAt(int row) {

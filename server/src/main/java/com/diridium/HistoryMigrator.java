@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
  */
 public class HistoryMigrator extends Migrator {
 
-    private static Logger log = LoggerFactory.getLogger(HistoryMigrator.class);
+    private static final Logger log = LoggerFactory.getLogger(HistoryMigrator.class);
 
     @Override
     public void migrate() throws MigrationException {

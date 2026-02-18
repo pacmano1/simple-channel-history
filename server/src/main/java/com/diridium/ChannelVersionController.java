@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ChannelVersionController implements ChannelPlugin {
 
-    private static Logger log = LoggerFactory.getLogger(ChannelVersionController.class);
+    private static final Logger log = LoggerFactory.getLogger(ChannelVersionController.class);
 
     private DatabaseHistoryRepository repo;
 

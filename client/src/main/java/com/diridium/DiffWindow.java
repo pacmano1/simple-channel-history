@@ -24,8 +24,8 @@ import javax.swing.KeyStroke;
  * @author Kiran Ayyagari (kayyagari@apache.org)
  */
 public class DiffWindow extends JDialog {
-    private String leftLabel;
-    private String rightLabel;
+    private final String leftLabel;
+    private final String rightLabel;
 
     private DiffWindow(Dialog parent, String title, String leftLabel, String rightLabel) {
         super(parent, title, true); // modal dialog

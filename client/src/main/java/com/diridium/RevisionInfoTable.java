@@ -3,7 +3,6 @@
 
 package com.diridium;
 
-import org.jdesktop.swingx.decorator.Highlighter;
 import org.jdesktop.swingx.decorator.HighlighterFactory;
 
 import com.mirth.connect.client.ui.UIConstants;
@@ -16,8 +15,7 @@ public class RevisionInfoTable extends MirthTable {
 
     public RevisionInfoTable() {
         super();
-        Highlighter rowStriper = HighlighterFactory.createAlternateStriping(UIConstants.HIGHLIGHTER_COLOR, UIConstants.BACKGROUND_COLOR);
-        setHighlighters(rowStriper);
+        setHighlighters(HighlighterFactory.createAlternateStriping(UIConstants.HIGHLIGHTER_COLOR, UIConstants.BACKGROUND_COLOR));
         setSortable(false);
     }
 }

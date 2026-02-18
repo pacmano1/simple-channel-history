@@ -121,7 +121,7 @@ public class ChannelXmlDecomposer {
             destElements.add(connector);
             destGroupNames.add(groupName);
 
-            if (destOrderBuilder.length() > 0) {
+            if (!destOrderBuilder.isEmpty()) {
                 destOrderBuilder.append("\n");
             }
             destOrderBuilder.append(i + 1).append(". ").append(connName).append(" [").append(metaDataId).append("]");
@@ -163,7 +163,7 @@ public class ChannelXmlDecomposer {
         Map<String, DecomposedComponent> ordered = new LinkedHashMap<>();
         ordered.put(key, new DecomposedComponent(key, "Channel Properties", remainderXml,
                 DecomposedComponent.Category.CHANNEL_PROPERTIES, key));
-        if (destOrderBuilder.length() > 0) {
+        if (!destOrderBuilder.isEmpty()) {
             String destOrderKey = "Destination Order";
             ordered.put(destOrderKey, new DecomposedComponent(destOrderKey, "Destination Order",
                     destOrderBuilder.toString(),

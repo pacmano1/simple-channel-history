@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
  */
 public class CodeTemplateVersionController implements CodeTemplateServerPlugin {
 
-    private static Logger log = LoggerFactory.getLogger(CodeTemplateVersionController.class);
+    private static final Logger log = LoggerFactory.getLogger(CodeTemplateVersionController.class);
 
     private DatabaseHistoryRepository repo;
 
