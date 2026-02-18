@@ -10,6 +10,7 @@ An Open Integration Engine plugin for tracking version history of Channels and C
 - Color-coded change indicators (added, removed, modified, unchanged)
 - Revert to any previous version
 - Prune older versions to manage storage
+- Deleted items tracking — automatically saves a final XML snapshot when channels or code templates are deleted
 - Database-backed storage (history travels with database backups)
 
 <img src="https://raw.githubusercontent.com/wiki/pacmano1/simple-channel-history/images/4.jpg" alt="History dialog showing revision table" width="500">
