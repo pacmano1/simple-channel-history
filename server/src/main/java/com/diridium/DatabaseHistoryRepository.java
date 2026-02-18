@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mirth.connect.model.Channel;
+import com.mirth.connect.model.User;
 import com.mirth.connect.model.codetemplates.CodeTemplate;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
 import com.mirth.connect.server.controllers.ControllerFactory;
@@ -448,7 +449,7 @@ public class DatabaseHistoryRepository {
 
     public String getUserName(int userId) {
         try {
-            com.mirth.connect.model.User user = userController.getUser(userId, null);
+            User user = userController.getUser(userId, null);
             if (user != null) {
                 return user.getUsername();
             }

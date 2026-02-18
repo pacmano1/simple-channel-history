@@ -152,7 +152,7 @@ public class DecomposedDiffWindow extends JDialog {
         add(mainPanel);
 
         // Wire up selection listener
-        treePanel.setComponentSelectionListener(key -> showComponentDiff(key));
+        treePanel.setComponentSelectionListener(this::showComponentDiff);
     }
 
     private void toggleView() {

@@ -11,6 +11,7 @@ import java.util.HashSet;
 import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 
+import com.mirth.connect.client.ui.Frame;
 import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.client.ui.codetemplate.CodeTemplatePanel;
 import com.mirth.connect.plugins.ClientPlugin;
@@ -36,7 +37,7 @@ public class CodeTemplateHistoryPlugin extends ClientPlugin {
         // Add the "View History" action to the code template panel
         CodeTemplatePanel codeTemplatePanel = PlatformUI.MIRTH_FRAME.codeTemplatePanel;
         if (codeTemplatePanel != null) {
-            AbstractAction viewHistoryAction = new AbstractAction("View History", new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/book_previous.png"))) {
+            AbstractAction viewHistoryAction = new AbstractAction("View History", new ImageIcon(Frame.class.getResource("images/book_previous.png"))) {
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     showCodeTemplateHistory();

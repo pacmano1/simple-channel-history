@@ -37,7 +37,7 @@ public class ChannelHistoryPlugin extends ClientPlugin {
 
         // Add the "View History" task to the channel tasks
         parent.addTask("viewChannelHistory", "View History", "View version history of the selected channel.", "",
-                new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/book_previous.png")),
+                new ImageIcon(Frame.class.getResource("images/book_previous.png")),
                 parent.channelPanel.channelTasks, parent.channelPanel.channelPopupMenu, this);
     }
 

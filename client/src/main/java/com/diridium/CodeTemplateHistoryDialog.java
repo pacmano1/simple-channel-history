@@ -5,13 +5,13 @@
 package com.diridium;
 
 import java.awt.BorderLayout;
+import java.awt.Cursor;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -35,6 +35,7 @@ import javax.swing.SwingUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mirth.connect.client.ui.Frame;
 import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
 
@@ -46,21 +47,18 @@ import com.mirth.connect.model.converters.ObjectXMLSerializer;
 public class CodeTemplateHistoryDialog extends JDialog {
     private static final Logger log = LoggerFactory.getLogger(CodeTemplateHistoryDialog.class);
 
-    private String codeTemplateId;
-    private String codeTemplateName;
+    private final String codeTemplateId;
+    private final String codeTemplateName;
     private RevisionInfoTable tblRevisions;
     private ChannelHistoryServletInterface servlet;
     private JButton btnShowDiff;
     private JButton btnRevert;
-    private JButton btnClose;
-    private JPopupMenu popupMenu;
-    private JMenuItem menuPrune;
 
     public CodeTemplateHistoryDialog(JFrame parent, String codeTemplateId, String codeTemplateName) {
         super(parent, "Version History - " + codeTemplateName, true);
         this.codeTemplateId = codeTemplateId;
         this.codeTemplateName = codeTemplateName;
-        ObjectXMLSerializer.getInstance().allowTypes(Collections.emptyList(), Arrays.asList(RevisionInfo.class.getPackage().getName() + ".**"), Collections.emptyList());
+        ObjectXMLSerializer.getInstance().allowTypes(Collections.emptyList(), Collections.singletonList(RevisionInfo.class.getPackage().getName() + ".**"), Collections.emptyList());
 
         initComponents();
         loadHistory();
@@ -95,8 +93,8 @@ public class CodeTemplateHistoryDialog extends JDialog {
         });
 
         // Setup popup menu
-        popupMenu = new JPopupMenu();
-        menuPrune = new JMenuItem("Prune older revisions");
+        JPopupMenu popupMenu = new JPopupMenu();
+        JMenuItem menuPrune = new JMenuItem("Prune older revisions");
         menuPrune.addActionListener(e -> pruneOlderRevisions());
         popupMenu.add(menuPrune);
 
@@ -144,14 +142,14 @@ public class CodeTemplateHistoryDialog extends JDialog {
         JPanel bottomPanel = new JPanel(new BorderLayout());
 
         // Help icon with tooltip and click handler
-        JLabel helpLabel = new JLabel(new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/help.png")));
+        JLabel helpLabel = new JLabel(new ImageIcon(Frame.class.getResource("images/help.png")));
         String helpText = "<html>" +
                 "<b>Double-click</b> a revision to compare with previous<br>" +
                 "<b>Ctrl/Cmd-click</b> to select two revisions, then Show Diff<br>" +
                 "<b>Right-click</b> for prune option" +
                 "</html>";
         helpLabel.setToolTipText(helpText);
-        helpLabel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        helpLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         helpLabel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -178,7 +176,7 @@ public class CodeTemplateHistoryDialog extends JDialog {
         btnRevert.addActionListener(e -> revertToSelected());
         buttonPanel.add(btnRevert);
 
-        btnClose = new JButton("Close");
+        JButton btnClose = new JButton("Close");
         btnClose.addActionListener(e -> dispose());
         buttonPanel.add(btnClose);
 

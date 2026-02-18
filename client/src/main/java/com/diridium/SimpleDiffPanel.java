@@ -28,6 +28,9 @@ import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.difflib.DiffUtils;
 import com.github.difflib.patch.AbstractDelta;
 import com.github.difflib.patch.Patch;
@@ -38,6 +41,8 @@ import com.github.difflib.patch.Patch;
  * @author Kiran Ayyagari (kayyagari@apache.org)
  */
 public class SimpleDiffPanel extends JPanel {
+
+    private static final Logger log = LoggerFactory.getLogger(SimpleDiffPanel.class);
 
     private static final Color COLOR_ADDED = new Color(200, 255, 200);      // Light green
     private static final Color COLOR_DELETED = new Color(255, 200, 200);    // Light red
@@ -361,7 +366,7 @@ public class SimpleDiffPanel extends JPanel {
             }
 
         } catch (BadLocationException e) {
-            e.printStackTrace();
+            log.error("Error rendering diff", e);
         }
 
         // Set line numbers text
@@ -393,7 +398,7 @@ public class SimpleDiffPanel extends JPanel {
                 appendLine(leftPane, lines.get(i), normalStyle, null, leftLineNumBuilder, i + 1);
             }
         } catch (BadLocationException e) {
-            e.printStackTrace();
+            log.error("Error rendering diff", e);
         }
 
         leftLineNumbers.setText(leftLineNumBuilder.toString());

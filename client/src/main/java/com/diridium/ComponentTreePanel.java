@@ -4,6 +4,7 @@
 package com.diridium;
 
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
@@ -59,9 +60,9 @@ public class ComponentTreePanel extends JPanel {
     private final Map<String, ChangeType> changeTypes;
     private final Set<String> reorderedSubGroups;
     private final Set<String> allKeys;
-    private JTree tree;
-    private JCheckBox showChangedOnlyCheckBox;
-    private JCheckBox showLabelsCheckBox;
+    private final JTree tree;
+    private final JCheckBox showChangedOnlyCheckBox;
+    private final JCheckBox showLabelsCheckBox;
     private ComponentSelectionListener listener;
 
     public ComponentTreePanel(Map<String, DecomposedComponent> leftComponents,
@@ -100,8 +101,8 @@ public class ComponentTreePanel extends JPanel {
             if (node == null || listener == null) {
                 return;
             }
-            if (node.getUserObject() instanceof ComponentNodeData) {
-                listener.componentSelected(((ComponentNodeData) node.getUserObject()).key);
+            if (node.getUserObject() instanceof ComponentNodeData data) {
+                listener.componentSelected(data.key);
             } else {
                 listener.componentSelected(null);
             }
@@ -115,7 +116,7 @@ public class ComponentTreePanel extends JPanel {
         showLabelsCheckBox = new JCheckBox("Show Labels", true);
         showLabelsCheckBox.addActionListener(e -> tree.repaint());
 
-        JPanel checkBoxPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+        JPanel checkBoxPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         checkBoxPanel.add(showChangedOnlyCheckBox);
         checkBoxPanel.add(showLabelsCheckBox);
         add(checkBoxPanel, BorderLayout.SOUTH);
@@ -128,8 +129,8 @@ public class ComponentTreePanel extends JPanel {
 
         // Replay current selection since it may have fired before the listener was wired
         DefaultMutableTreeNode node = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
-        if (node != null && node.getUserObject() instanceof ComponentNodeData && listener != null) {
-            listener.componentSelected(((ComponentNodeData) node.getUserObject()).key);
+        if (node != null && node.getUserObject() instanceof ComponentNodeData data && listener != null) {
+            listener.componentSelected(data.key);
         }
     }
 
@@ -234,10 +235,10 @@ public class ComponentTreePanel extends JPanel {
 
         for (String key : keys) {
             switch (changeTypes.getOrDefault(key, ChangeType.UNCHANGED)) {
-                case LEFT_ONLY: hasLeftOnly = true; break;
-                case RIGHT_ONLY: hasRightOnly = true; break;
-                case MODIFIED: hasModified = true; break;
-                case UNCHANGED: hasUnchanged = true; break;
+                case LEFT_ONLY -> hasLeftOnly = true;
+                case RIGHT_ONLY -> hasRightOnly = true;
+                case MODIFIED -> hasModified = true;
+                case UNCHANGED -> hasUnchanged = true;
             }
         }
 
@@ -378,8 +379,7 @@ public class ComponentTreePanel extends JPanel {
             DefaultMutableTreeNode groupNode = (DefaultMutableTreeNode) root.getChildAt(i);
             for (int j = 0; j < groupNode.getChildCount(); j++) {
                 DefaultMutableTreeNode child = (DefaultMutableTreeNode) groupNode.getChildAt(j);
-                if (child.getUserObject() instanceof ComponentNodeData) {
-                    ComponentNodeData data = (ComponentNodeData) child.getUserObject();
+                if (child.getUserObject() instanceof ComponentNodeData data) {
                     if (data.changeType != ChangeType.UNCHANGED) {
                         tree.setSelectionPath(new TreePath(child.getPath()));
                         return;
@@ -388,8 +388,7 @@ public class ComponentTreePanel extends JPanel {
                     // Sub-group: search its children
                     for (int k = 0; k < child.getChildCount(); k++) {
                         DefaultMutableTreeNode leaf = (DefaultMutableTreeNode) child.getChildAt(k);
-                        if (leaf.getUserObject() instanceof ComponentNodeData) {
-                            ComponentNodeData data = (ComponentNodeData) leaf.getUserObject();
+                        if (leaf.getUserObject() instanceof ComponentNodeData data) {
                             if (data.changeType != ChangeType.UNCHANGED) {
                                 tree.setSelectionPath(new TreePath(leaf.getPath()));
                                 return;
@@ -442,12 +441,12 @@ public class ComponentTreePanel extends JPanel {
     }
 
     private static String changeTypeLabel(ChangeType ct) {
-        switch (ct) {
-            case LEFT_ONLY: return " (removed)";
-            case RIGHT_ONLY: return " (added)";
-            case MODIFIED: return " (changed)";
-            default: return "";
-        }
+        return switch (ct) {
+            case LEFT_ONLY -> " (removed)";
+            case RIGHT_ONLY -> " (added)";
+            case MODIFIED -> " (changed)";
+            default -> "";
+        };
     }
 
     private class ChangedNodeRenderer extends DefaultTreeCellRenderer {
@@ -458,10 +457,9 @@ public class ComponentTreePanel extends JPanel {
 
             boolean showLabels = showLabelsCheckBox.isSelected();
 
-            if (value instanceof DefaultMutableTreeNode) {
-                Object userObj = ((DefaultMutableTreeNode) value).getUserObject();
-                if (userObj instanceof ComponentNodeData) {
-                    ComponentNodeData data = (ComponentNodeData) userObj;
+            if (value instanceof DefaultMutableTreeNode treeNode) {
+                Object userObj = treeNode.getUserObject();
+                if (userObj instanceof ComponentNodeData data) {
                     if (showLabels) {
                         setText(data.toStringWithLabel());
                     }
@@ -471,8 +469,7 @@ public class ComponentTreePanel extends JPanel {
                         setForeground(color);
                         setFont(getFont().deriveFont(Font.BOLD));
                     }
-                } else if (userObj instanceof GroupNodeData) {
-                    GroupNodeData data = (GroupNodeData) userObj;
+                } else if (userObj instanceof GroupNodeData data) {
                     if (showLabels) {
                         setText(data.toStringWithLabel());
                     }
@@ -488,26 +485,22 @@ public class ComponentTreePanel extends JPanel {
         }
 
         private Color colorForChangeType(ChangeType ct) {
-            switch (ct) {
-                case MODIFIED:
-                    return COLOR_MODIFIED;
-                case LEFT_ONLY:
-                    return COLOR_LEFT_ONLY;
-                case RIGHT_ONLY:
-                    return COLOR_RIGHT_ONLY;
-                default:
-                    return null;
-            }
+            return switch (ct) {
+                case MODIFIED -> COLOR_MODIFIED;
+                case LEFT_ONLY -> COLOR_LEFT_ONLY;
+                case RIGHT_ONLY -> COLOR_RIGHT_ONLY;
+                default -> null;
+            };
         }
     }
 
     private static Icon iconForChangeType(ChangeType ct) {
-        switch (ct) {
-            case MODIFIED: return ICON_MODIFIED;
-            case LEFT_ONLY: return ICON_LEFT_ONLY;
-            case RIGHT_ONLY: return ICON_RIGHT_ONLY;
-            default: return ICON_UNCHANGED;
-        }
+        return switch (ct) {
+            case MODIFIED -> ICON_MODIFIED;
+            case LEFT_ONLY -> ICON_LEFT_ONLY;
+            case RIGHT_ONLY -> ICON_RIGHT_ONLY;
+            default -> ICON_UNCHANGED;
+        };
     }
 
     private static Icon createCircleIcon(Color color) {

@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ChannelHistoryServlet extends MirthServlet implements ChannelHistoryServletInterface {
 
-    private static Logger log = LoggerFactory.getLogger(ChannelHistoryServlet.class);
+    private static final Logger log = LoggerFactory.getLogger(ChannelHistoryServlet.class);
 
     private DatabaseHistoryRepository repo;
 
@@ -178,6 +178,13 @@ public class ChannelHistoryServlet extends MirthServlet implements ChannelHistor
             // Update the code template
             codeTemplateController.updateCodeTemplate(codeTemplate, context, true);
             log.debug("reverted CodeTemplate {} to revision {}", codeTemplateId, revision);
+
+            Map<String, String> attributes = new LinkedHashMap<>();
+            attributes.put("Code Template", codeTemplate.getName());
+            attributes.put("Code Template ID", codeTemplateId);
+            attributes.put("Reverted to revision", String.valueOf(codeTemplate.getRevision()));
+            eventController.dispatchEvent(new ServerEvent(serverId, PLUGIN_NAME, Level.INFORMATION, Outcome.SUCCESS, attributes));
+
             return true;
         }
         catch (Exception e) {
