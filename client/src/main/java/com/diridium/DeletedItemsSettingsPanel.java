@@ -24,8 +24,11 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingWorker;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
 
 import org.jdesktop.swingx.decorator.HighlighterFactory;
@@ -59,6 +62,7 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
     private JButton btnViewXml;
     private JButton btnDiff;
     private JButton btnDownload;
+    private JTextField searchField;
     private JButton btnPurge;
 
     public DeletedItemsSettingsPanel(String tabName) {
@@ -76,7 +80,7 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
         table = new MirthTable();
         table.setHighlighters(HighlighterFactory.createAlternateStriping(
                 UIConstants.HIGHLIGHTER_COLOR, UIConstants.BACKGROUND_COLOR));
-        table.setSortable(false);
+        table.setSortable(true);
         table.setRowSelectionAllowed(true);
         table.setColumnSelectionAllowed(false);
         table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
@@ -105,6 +109,15 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
         filterCombo = new JComboBox<>(new String[]{FILTER_ALL, FILTER_CHANNELS, FILTER_CODE_TEMPLATES});
         filterCombo.addActionListener(e -> applyFilter());
         buttonPanel.add(filterCombo);
+
+        buttonPanel.add(new JLabel("  Filter:"));
+        searchField = new JTextField(15);
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { applyFilter(); }
+            @Override public void removeUpdate(DocumentEvent e) { applyFilter(); }
+            @Override public void changedUpdate(DocumentEvent e) { applyFilter(); }
+        });
+        buttonPanel.add(searchField);
 
         btnViewXml = new JButton("View XML");
         btnViewXml.setEnabled(false);
@@ -187,21 +200,17 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
     }
 
     private void applyFilter() {
-        String filter = (String) filterCombo.getSelectedItem();
-        List<DeletedItemInfo> filtered;
-        if (FILTER_CHANNELS.equals(filter)) {
-            filtered = new ArrayList<>();
-            for (DeletedItemInfo info : allItems) {
-                if (DeletedItemInfo.TYPE_CHANNEL.equals(info.getType())) filtered.add(info);
-            }
-        } else if (FILTER_CODE_TEMPLATES.equals(filter)) {
-            filtered = new ArrayList<>();
-            for (DeletedItemInfo info : allItems) {
-                if (DeletedItemInfo.TYPE_CODE_TEMPLATE.equals(info.getType())) filtered.add(info);
-            }
-        } else {
-            filtered = allItems;
+        String typeFilter = (String) filterCombo.getSelectedItem();
+        String search = searchField != null ? searchField.getText().trim().toLowerCase() : "";
+
+        List<DeletedItemInfo> filtered = new ArrayList<>();
+        for (DeletedItemInfo info : allItems) {
+            if (FILTER_CHANNELS.equals(typeFilter) && !DeletedItemInfo.TYPE_CHANNEL.equals(info.getType())) continue;
+            if (FILTER_CODE_TEMPLATES.equals(typeFilter) && !DeletedItemInfo.TYPE_CODE_TEMPLATE.equals(info.getType())) continue;
+            if (!search.isEmpty() && !info.getName().toLowerCase().contains(search)) continue;
+            filtered.add(info);
         }
+
         model = new DeletedItemTableModel(filtered);
         table.setModel(model);
         btnViewXml.setEnabled(false);
@@ -226,8 +235,8 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
         boolean canDiff = false;
         if (count == 2) {
             int[] rows = table.getSelectedRows();
-            DeletedItemInfo a = model.getItemAt(rows[0]);
-            DeletedItemInfo b = model.getItemAt(rows[1]);
+            DeletedItemInfo a = model.getItemAt(table.convertRowIndexToModel(rows[0]));
+            DeletedItemInfo b = model.getItemAt(table.convertRowIndexToModel(rows[1]));
             canDiff = a.getType().equals(b.getType());
         }
         btnDiff.setEnabled(canDiff);
@@ -240,8 +249,8 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
         ChannelHistoryServletInterface svc = getServlet();
         if (svc == null) return;
 
-        DeletedItemInfo a = model.getItemAt(rows[0]);
-        DeletedItemInfo b = model.getItemAt(rows[1]);
+        DeletedItemInfo a = model.getItemAt(table.convertRowIndexToModel(rows[0]));
+        DeletedItemInfo b = model.getItemAt(table.convertRowIndexToModel(rows[1]));
 
         // Assign older/newer by date
         DeletedItemInfo older = a.getDateDeleted() <= b.getDateDeleted() ? a : b;
@@ -296,7 +305,7 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
         ChannelHistoryServletInterface svc = getServlet();
         if (svc == null) return;
 
-        DeletedItemInfo info = model.getItemAt(row);
+        DeletedItemInfo info = model.getItemAt(table.convertRowIndexToModel(row));
         try {
             String xml;
             boolean isChannel = DeletedItemInfo.TYPE_CHANNEL.equals(info.getType());
@@ -345,7 +354,7 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
         ChannelHistoryServletInterface svc = getServlet();
         if (svc == null) return;
 
-        DeletedItemInfo info = model.getItemAt(row);
+        DeletedItemInfo info = model.getItemAt(table.convertRowIndexToModel(row));
         try {
             String xml;
             if (DeletedItemInfo.TYPE_CHANNEL.equals(info.getType())) {
@@ -378,7 +387,7 @@ public class DeletedItemsSettingsPanel extends AbstractSettingsPanel {
         int row = table.getSelectedRow();
         if (row < 0) return;
 
-        DeletedItemInfo info = model.getItemAt(row);
+        DeletedItemInfo info = model.getItemAt(table.convertRowIndexToModel(row));
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Permanently delete the snapshot for \"" + info.getName() + "\"?\nThis action cannot be undone.",
                 "Confirm Purge",
