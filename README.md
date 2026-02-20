@@ -1,5 +1,10 @@
 # Simple Channel and Code Template History
 
+[![GitHub release](https://img.shields.io/github/v/release/pacmano1/simple-channel-history)](https://github.com/pacmano1/simple-channel-history/releases/latest)
+[![License: MPL-2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://www.mozilla.org/en-US/MPL/2.0/)
+[![Java 17+](https://img.shields.io/badge/Java-17%2B-blue)](https://openjdk.org/projects/jdk/17/)
+[![OIE 4.5.2+](https://img.shields.io/badge/OIE-4.5.2%2B-blue)](https://github.com/kayyagari/connect)
+
 An Open Integration Engine plugin for tracking version history of Channels and Code Templates.
 
 ## Features
